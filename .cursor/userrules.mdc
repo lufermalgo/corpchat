@@ -1,0 +1,92 @@
+---
+alwaysApply: true
+---
+# Guía de Estilo de Desarrollo
+
+Este documento define las convenciones de estilo a seguir para el desarrollos de proyectos con el objetivo de mantener la consistencia, legibilidad y mantenibilidad del código.
+
+## 1. Nomenclatura
+
+-   **Clases:** `PascalCase` (ej. `MainApp`, `ModelConfigurationManager`).
+-   **Funciones y Métodos:** `snake_case` (ej. `process_data`, `get_latest_setpoints`).
+-   **Variables Locales y Parámetros de Funciones/Métodos:** `snake_case` (ej. `payload_data`, `asset_context`).
+-   **Variables de Instancia:**
+    -   Para simular "privacidad" o uso interno, prefijar con un guion bajo `_` seguido de `snake_case` (ej. `self._cache_setpoints`, `self._db_connection`). Esto unifica el estilo actual.
+-   **Constantes a Nivel de Módulo:** `UPPER_SNAKE_CASE` (ej. `MAX_RETRIES`, `DEFAULT_TIMEOUT_SECONDS`).
+-   **Módulos y Archivos Python (.py):** `snake_case` (ej. `model_config_manager.py`, `setpoint_service.py`).
+-   **Paquetes (Directorios):** `snake_case`.
+-   **Campos en Modelos Pydantic (Schemas):** Mantener `camelCase` para la consistencia con la serialización JSON y APIs (ej. `manifestVersion`, `modelId`).
+
+## 2. Estructura del Código
+
+-   **Sangría:** Usar 4 espacios por nivel de sangría. No usar tabulaciones.
+-   **Longitud de Línea Máxima:** Intentar mantener las líneas por debajo de 99-120 caracteres para mejorar la legibilidad. Dividir líneas largas usando paréntesis o barras invertidas de continuación de línea.
+-   **Líneas en Blanco:** Usar líneas en blanco para separar bloques lógicos de código, definiciones de funciones y clases (generalmente dos líneas en blanco antes de una definición de clase o función de alto nivel, una línea en blanco para separar métodos dentro de una clase o bloques lógicos).
+-   **Importaciones:**
+    -   Agrupar al principio del archivo.
+    -   Orden recomendado:
+        1.  Librerías estándar de Python (ej. `import os`, `import logging`).
+        2.  Librerías de terceros (ej. `import requests`, `from pydantic import BaseModel`).
+        3.  Módulos de la aplicación local (usar importaciones absolutas si la estructura del paquete lo permite, ej. `from .schemas.my_schema import MySchema` o `from backend_model_service.utils import helper_function`).
+    -   Evitar `sys.path.insert` si es posible, prefiriendo una estructura de paquete adecuada o configuración de `PYTHONPATH`.
+
+## 3. Comentarios y Documentación
+
+-   **Docstrings:**
+    -   Escribir docstrings para todos los módulos, clases, funciones y métodos públicos.
+    -   Usar un estilo simple y descriptivo. Para funciones/métodos, describir brevemente lo que hace, sus argumentos (`Args:`) y lo que retorna (`Returns:`), si aplica. Ejemplo:
+        ```python
+        def mi_funcion(param1: str, param2: int) -> bool:
+            \"\"\"
+            Descripción concisa de lo que hace mi_funcion.
+
+            Args:
+                param1: Descripción del primer parámetro.
+                param2: Descripción del segundo parámetro.
+
+            Returns:
+                True si la operación fue exitosa, False en caso contrario.
+            \"\"\"
+            # ... código ...
+        ```
+-   **Comentarios en Línea:** Usar comentarios (`#`) para explicar secciones de código complejas, decisiones de diseño no obvias, o para dejar TODOs/FIXMEs. Evitar comentar código obvio.
+
+## 4. Tipado Estático (Type Hinting)
+
+-   **Adopción Recomendada:** Se **recomienda encarecidamente** el uso de type hints de Python (PEP 484) para todas las nuevas funciones, métodos, y variables donde sea práctico.
+-   Esto mejora la legibilidad, ayuda a la detección temprana de errores con herramientas como MyPy, y facilita el mantenimiento.
+-   Ejemplo: `def procesar_datos(payload: Dict[str, Any], config: AppConfig) -> Optional[ProcesamientoResult]:`
+
+## 5. Logging
+
+-   Utilizar el módulo `logging` estándar de Python.
+-   Obtener un logger específico para el módulo actual: `_logger = logging.getLogger(__name__)`.
+-   Usar niveles de log apropiados:
+    -   `_logger.debug("Mensaje detallado para depuración.")`
+    -   `_logger.info("Evento de flujo normal de la aplicación.")`
+    -   `_logger.warning("Algo inesperado ocurrió, pero la app puede continuar.")`
+    -   `_logger.error("Error que impide una funcionalidad pero la app puede seguir (o recuperarse).")`
+    -   `_logger.critical("Error grave que probablemente termine la aplicación.")`
+-   Para errores capturados en `try-except`, incluir información del error y, si es útil, el traceback: `_logger.error(f"Falló el procesamiento: {e}", exc_info=True)` o `_logger.error(f"Falló el procesamiento: {e}\\n{traceback.format_exc()}")`.
+-   Preferir logs estructurados si se planea integrar con sistemas de monitoreo avanzados (se puede definir un Formatter JSON).
+
+## 6. Manejo de Errores
+
+-   Usar bloques `try-except` para operaciones que puedan fallar (IO, llamadas de red, parsing).
+-   Capturar excepciones específicas en lugar de `except Exception:` genérico cuando sea posible. Si se usa `except Exception:`, loguear el error con detalle.
+-   Considerar la creación de excepciones personalizadas para errores específicos del dominio de la aplicación si esto clarifica el manejo de errores.
+
+## 7. Programación Orientada a Objetos (OOP)
+
+-   Continuar con el enfoque OOP para la estructuración de componentes principales (servicios, manejadores, configuraciones).
+-   Encapsular lógica y datos relacionados dentro de clases.
+
+## 8. Formato de Código Automático
+
+-   Considerar el uso de un formateador de código como Black o YAPF y un linter como Flake8 o Pylint, con una configuración compartida, para mantener la consistencia automáticamente.
+
+## 9. Principios Generales
+
+-   **DRY (Don't Repeat Yourself):** Evitar la duplicación de código.
+-   **KISS (Keep It Simple, Stupid):** Preferir soluciones simples y directas cuando sea posible.
+-   **Legibilidad:** Escribir código que sea fácil de entender por otros desarrolladores (y por tu yo futuro).
