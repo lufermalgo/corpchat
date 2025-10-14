@@ -1,0 +1,70 @@
+# Cloud Build configuration para Open WebUI con branding
+substitutions:
+  _SERVICE_NAME: corpchat-ui
+  _REGION: us-central1
+  _ENVIRONMENT: dev
+  _APP_TITLE: CorpChat
+
+steps:
+  # Build Docker image con branding
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '-t'
+      - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:latest'
+      - '--build-arg'
+      - 'APP_TITLE=${_APP_TITLE}'
+      - '.'
+    dir: 'services/ui'
+
+  # Push image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
+    dir: 'services/ui'
+
+  # Push latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:latest'
+    dir: 'services/ui'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image=gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--min-instances=0'
+      - '--max-instances=5'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--timeout=300s'
+      - '--concurrency=80'
+      - '--service-account=corpchat-app@${PROJECT_ID}.iam.gserviceaccount.com'
+      - '--set-env-vars=APP_TITLE=${_APP_TITLE},WEBUI_AUTH_PROVIDER=trusted_header'
+      - '--labels=team=corpchat,env=${_ENVIRONMENT},service=ui'
+      - '--allow-unauthenticated=false'
+      - '--ingress=all'
+
+# Timeout para el build completo
+timeout: '1800s'
+
+# Opciones adicionales
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Imágenes a mantener
+images:
+  - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
+  - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:latest'
+
