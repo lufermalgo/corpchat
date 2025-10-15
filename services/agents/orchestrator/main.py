@@ -149,7 +149,7 @@ async def chat(
         )
         
         # Crear Runner
-        runner = Runner(orchestrator)
+        runner = Runner()
         
         # Variables para acumular respuesta
         response_text = ""
@@ -158,10 +158,12 @@ async def chat(
         
         # Invocar ADK usando run_async (event loop)
         # Según docs: run_async retorna async generator de eventos
+        # El agente se pasa en run_async junto con session y message
         try:
             _logger.info(f"🔄 Iniciando ADK event loop...")
             
             async for event in runner.run_async(
+                agent=orchestrator,
                 session=session,
                 new_message=request.message
             ):
