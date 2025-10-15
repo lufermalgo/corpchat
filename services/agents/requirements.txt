@@ -1,38 +1,25 @@
 # Agents - ADK Orchestrator + Specialists
 # Python 3.13
 
-# ADK (Agent Development Kit)
+# ADK (Agent Development Kit) - instalarlo primero para que resuelva sus dependencias
 google-adk>=0.2.0
 
-# Google Cloud
-# Nota: Usar versiones compatibles con ADK (requiere aiplatform>=1.95.1)
-google-cloud-firestore>=2.19.0
-google-cloud-storage>=2.18.0
-google-cloud-aiplatform>=1.112.0
-google-cloud-bigquery>=3.27.0
-google-cloud-logging>=3.11.0
-google-auth>=2.35.0
-
 # Web framework (para endpoints HTTP de agentes)
-fastapi==0.115.0
-uvicorn[standard]==0.32.0
-pydantic==2.9.2
+# Usar versiones compatibles con ADK (requiere starlette>=0.46.2)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.9.0
+
+# Google Cloud adicionales (ADK ya incluye muchas)
+google-cloud-bigquery>=3.27.0
 
 # HTTP client
-httpx==0.27.2
+httpx>=0.27.0
 
 # Utilities
 python-dotenv>=1.0.0
-python-dateutil>=2.9.0.post0
-
-# Google APIs (para tools)
-# Nota: ADK requiere >=2.157.0
-google-api-python-client>=2.157.0
-google-auth-httplib2>=0.2.0
-google-auth-oauthlib>=1.2.0
 
 # Testing
-pytest==8.3.3
-pytest-asyncio==0.24.0
-pytest-mock==3.14.0
-
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+pytest-mock>=3.14.0
