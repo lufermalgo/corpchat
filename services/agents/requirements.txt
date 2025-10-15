@@ -5,12 +5,13 @@
 google-adk>=0.2.0
 
 # Google Cloud
-google-cloud-firestore==2.19.0
-google-cloud-storage==2.18.2
-google-cloud-aiplatform==1.71.1
-google-cloud-bigquery==3.27.0
-google-cloud-logging==3.11.3
-google-auth==2.35.0
+# Nota: Usar versiones compatibles con ADK (requiere aiplatform>=1.95.1)
+google-cloud-firestore>=2.19.0
+google-cloud-storage>=2.18.0
+google-cloud-aiplatform>=1.112.0
+google-cloud-bigquery>=3.27.0
+google-cloud-logging>=3.11.0
+google-auth>=2.35.0
 
 # Web framework (para endpoints HTTP de agentes)
 fastapi==0.115.0
