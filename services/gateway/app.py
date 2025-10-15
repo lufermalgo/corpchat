@@ -19,6 +19,7 @@ from google.cloud import logging as cloud_logging
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part, Content
 from vertexai.generative_models import ChatSession
+from model_selector import get_model_config, apply_thinking_mode, get_thinking_prompt
 
 # Configurar logging
 cloud_logging.Client().setup_logging()
@@ -48,10 +49,10 @@ class Message(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     """Request de chat completion compatible con OpenAI."""
-    model: str = Field(default="gpt-4")
+    model: str = Field(default="gpt-4o", description="Modelo a usar (gpt-4o, gpt-4, gpt-4o-mini, etc.)")
     messages: List[Message]
-    temperature: Optional[float] = Field(default=0.7, ge=0.0, le=2.0)
-    max_tokens: Optional[int] = Field(default=2048)
+    temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0, description="Override temperature del modelo")
+    max_tokens: Optional[int] = Field(default=None, description="Override max_tokens del modelo")
     stream: Optional[bool] = Field(default=False)
     user: Optional[str] = None
 
@@ -156,7 +157,8 @@ async def generate_stream(
     messages: List[Message],
     temperature: float,
     max_tokens: int,
-    user_id: str
+    user_id: str,
+    model_config=None
 ) -> AsyncGenerator[str, None]:
     """
     Genera respuestas en streaming desde Gemini.
@@ -167,6 +169,7 @@ async def generate_stream(
         temperature: Temperatura para generación
         max_tokens: Máximo de tokens a generar
         user_id: ID del usuario
+        model_config: Configuración del modelo seleccionado
     
     Yields:
         Chunks de respuesta en formato SSE (Server-Sent Events)
@@ -174,6 +177,12 @@ async def generate_stream(
     try:
         # Convertir mensajes
         gemini_messages = convert_messages_to_gemini(messages)
+        
+        # Aplicar thinking mode al último mensaje si hay model_config
+        if model_config and gemini_messages:
+            last_message = gemini_messages[-1].parts[0].text
+            enhanced_message = get_thinking_prompt(model_config, last_message)
+            gemini_messages[-1].parts[0].text = enhanced_message
         
         # Configurar generación
         generation_config = {
@@ -270,24 +279,26 @@ async def health():
 async def list_models():
     """
     Lista los modelos disponibles (compatible con OpenAI).
+    Permite a Open WebUI mostrar selector de modelos con diferentes modos de pensamiento.
     
     Returns:
-        Lista de modelos disponibles
+        Lista de modelos disponibles con configuración de thinking modes
     """
+    from model_selector import get_models_endpoint
+    models_data = get_models_endpoint()
+    
+    # Convertir a formato ModelsResponse
+    models = []
+    for model_data in models_data["data"]:
+        models.append(Model(
+            id=model_data["id"],
+            created=model_data["created"],
+            owned_by=model_data["owned_by"]
+        ))
+    
     return ModelsResponse(
         object="list",
-        data=[
-            Model(
-                id="gpt-4",
-                created=int(datetime.now().timestamp()),
-                owned_by="google"
-            ),
-            Model(
-                id="gpt-3.5-turbo",
-                created=int(datetime.now().timestamp()),
-                owned_by="google"
-            )
-        ]
+        data=models
     )
 
 
@@ -321,8 +332,22 @@ async def chat_completions(
             }
         )
         
-        # Inicializar modelo
-        model = GenerativeModel(MODEL_NAME)
+        # Obtener configuración del modelo seleccionado
+        model_config = get_model_config(request.model)
+        
+        _logger.info(
+            f"Using model config: {model_config.display_name} ({model_config.thinking_mode.value})",
+            extra={
+                "user_id": user_id,
+                "selected_model": request.model,
+                "vertex_model": model_config.vertex_model,
+                "thinking_mode": model_config.thinking_mode.value,
+                "labels": {"service": "gateway", "team": "corpchat"}
+            }
+        )
+        
+        # Inicializar modelo con configuración específica
+        model = GenerativeModel(model_config.vertex_model)
         
         # Si es streaming
         if request.stream:
@@ -330,9 +355,10 @@ async def chat_completions(
                 generate_stream(
                     model,
                     request.messages,
-                    request.temperature,
-                    request.max_tokens,
-                    user_id
+                    generation_config["temperature"],
+                    generation_config["max_output_tokens"],
+                    user_id,
+                    model_config
                 ),
                 media_type="text/event-stream"
             )
@@ -340,9 +366,16 @@ async def chat_completions(
         # Si no es streaming
         gemini_messages = convert_messages_to_gemini(request.messages)
         
+        # Aplicar thinking mode al último mensaje
+        if gemini_messages:
+            last_message = gemini_messages[-1].parts[0].text
+            enhanced_message = get_thinking_prompt(model_config, last_message)
+            gemini_messages[-1].parts[0].text = enhanced_message
+        
+        # Configuración de generación con override del usuario o configuración del modelo
         generation_config = {
-            "temperature": request.temperature,
-            "max_output_tokens": request.max_tokens,
+            "temperature": request.temperature if request.temperature is not None else model_config.temperature,
+            "max_output_tokens": request.max_tokens if request.max_tokens is not None else model_config.max_tokens,
         }
         
         chat = model.start_chat()
@@ -380,7 +413,7 @@ async def chat_completions(
         return ChatCompletionResponse(
             id=f"chatcmpl-{datetime.now().timestamp()}",
             created=int(datetime.now().timestamp()),
-            model=MODEL_NAME,
+            model=request.model,  # Usar modelo seleccionado por el usuario
             choices=[
                 Choice(
                     index=0,
