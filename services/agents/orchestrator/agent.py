@@ -17,6 +17,11 @@ if shared_path.exists() and str(shared_path) not in sys.path:
 
 from google.adk.agents import LlmAgent
 
+# Importar especialistas
+from specialists.conocimiento_empresa.agent import conocimiento_agent
+from specialists.estado_tecnico.agent import estado_tecnico_agent
+from specialists.productos_propuestas.agent import productos_agent
+
 _logger = logging.getLogger(__name__)
 
 # Variables de entorno
@@ -78,13 +83,17 @@ def create_orchestrator_agent():
     _logger.info(f"📊 Modelo: {MODEL}, Proyecto: {PROJECT_ID}, Región: {LOCATION}")
     
     try:
-        # Crear orquestador usando ADK
+        # Crear orquestador usando ADK con sub-agents
         orchestrator = LlmAgent(
             name="CorpChat",
             model=MODEL,
             instruction=ORCHESTRATOR_INSTRUCTION,
             description="Asistente corporativo que coordina consultas empresariales",
-            # sub_agents se agregarán cuando estén implementados los especialistas
+            sub_agents=[
+                conocimiento_agent,
+                estado_tecnico_agent,
+                productos_agent
+            ]
             # tools se agregarán progresivamente (google_search, custom tools, etc.)
         )
         

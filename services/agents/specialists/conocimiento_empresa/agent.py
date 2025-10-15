@@ -15,6 +15,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared"))
 from google.adk.agents import LlmAgent
 from google.cloud import logging as cloud_logging
 
+# Importar tools
+from shared.tools import search_knowledge_base, read_corporate_document, list_corporate_documents
+
 # Configurar logging
 cloud_logging.Client().setup_logging()
 _logger = logging.getLogger(__name__)
@@ -82,7 +85,11 @@ def create_specialist_agent():
         model=MODEL,
         instruction=INSTRUCTION,
         description="Experto en conocimiento interno de la empresa",
-        tools=[]  # Agregar tools cuando estén implementados
+        tools=[
+            search_knowledge_base,
+            read_corporate_document,
+            list_corporate_documents
+        ]
     )
     
     _logger.info("Especialista de Conocimiento Empresarial creado")
