@@ -14,13 +14,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
 
 from google.adk.agents import LlmAgent
-from google.cloud import logging as cloud_logging
-
-# Configurar logging
-try:
-    cloud_logging.Client().setup_logging()
-except Exception as e:
-    logging.warning(f"No se pudo configurar Cloud Logging: {e}")
 
 _logger = logging.getLogger(__name__)
 
@@ -73,15 +66,17 @@ def create_orchestrator_agent():
     """
     Crea y retorna el agente orquestador principal usando ADK.
     
+    IMPORTANTE: Se llama bajo demanda, no en el módulo global,
+    para evitar timeouts en la inicialización del contenedor.
+    
     Returns:
         LlmAgent configurado como orquestador
     """
-    _logger.info("Creando orquestador ADK...")
-    _logger.info(f"Modelo: {MODEL}, Proyecto: {PROJECT_ID}, Región: {LOCATION}")
+    _logger.info(f"🔧 Creando orquestador ADK...")
+    _logger.info(f"📊 Modelo: {MODEL}, Proyecto: {PROJECT_ID}, Región: {LOCATION}")
     
     try:
         # Crear orquestador usando ADK
-        # Nota: Por ahora sin sub_agents, se agregarán progresivamente
         orchestrator = LlmAgent(
             name="CorpChat",
             model=MODEL,
@@ -99,22 +94,10 @@ def create_orchestrator_agent():
         raise
 
 
-# Crear instancia global del orquestador
-try:
-    root_agent = create_orchestrator_agent()
-    _logger.info("🚀 Orquestador CorpChat listo")
-except Exception as e:
-    _logger.error(f"💥 Error fatal inicializando orquestador: {e}")
-    # No hacer raise aquí para que el módulo pueda importarse
-    # El error se manejará en main.py
-    root_agent = None
-
-
 if __name__ == "__main__":
-    if root_agent:
-        _logger.info("✅ Orquestador CorpChat inicializado correctamente")
-        _logger.info(f"📊 Modelo: {MODEL}")
-        _logger.info(f"📍 Proyecto: {PROJECT_ID}")
-        _logger.info(f"🌍 Región: {LOCATION}")
-    else:
-        _logger.error("❌ El orquestador no se inicializó correctamente")
+    # Test local
+    try:
+        agent = create_orchestrator_agent()
+        _logger.info("✅ Test: Orquestador creado correctamente")
+    except Exception as e:
+        _logger.error(f"❌ Test falló: {e}")

@@ -2,7 +2,8 @@
 Servidor HTTP para el orquestador ADK.
 
 Expone endpoints para que el gateway pueda invocar al orquestador.
-Usa Google ADK para orquestación multi-agente.
+Usa Google ADK Runner y run_async según documentación oficial:
+https://google.github.io/adk-docs/runtime/
 """
 
 import logging
@@ -21,8 +22,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
 
 from firestore_client import FirestoreClient
 
-# Importar agente ADK
-from agent import root_agent
+# Importar ADK components
+from google.adk.runners import Runner
+from google.adk.sessions import Session
+
+# Importar factory del agente (no el agente global)
+from agent import create_orchestrator_agent, PROJECT_ID, LOCATION
 
 # Configurar logging
 _logger = logging.getLogger(__name__)
@@ -30,12 +35,27 @@ _logger = logging.getLogger(__name__)
 # FastAPI app
 app = FastAPI(
     title="CorpChat Orchestrator",
-    description="Orquestador ADK principal",
+    description="Orquestador ADK usando Runner.run_async",
     version="1.0.0"
 )
 
 # Cliente Firestore
 firestore_client = FirestoreClient()
+
+# Cache del agente (lazy initialization)
+_orchestrator_agent = None
+
+
+def get_orchestrator():
+    """
+    Lazy initialization del orquestador.
+    Se crea bajo demanda para evitar timeout en container startup.
+    """
+    global _orchestrator_agent
+    if _orchestrator_agent is None:
+        _logger.info("🚀 Inicializando orquestador por primera vez...")
+        _orchestrator_agent = create_orchestrator_agent()
+    return _orchestrator_agent
 
 
 # Modelos Pydantic
@@ -52,6 +72,7 @@ class ChatResponse(BaseModel):
     response: str
     agent_used: str
     latency_ms: float
+    events_processed: int
 
 
 @app.get("/")
@@ -60,17 +81,21 @@ async def root():
     return {
         "service": "corpchat-orchestrator",
         "version": "1.0.0",
-        "adk_enabled": root_agent is not None,
-        "status": "healthy" if root_agent else "degraded"
+        "adk_runtime": "enabled",
+        "model": os.getenv("MODEL", "gemini-2.5-flash-001"),
+        "status": "healthy"
     }
 
 
 @app.get("/health")
 async def health():
     """Health check endpoint."""
-    if root_agent is None:
-        raise HTTPException(status_code=503, detail="Orchestrator agent not initialized")
-    return {"status": "healthy", "adk": "enabled"}
+    return {
+        "status": "healthy",
+        "adk": "enabled",
+        "project": PROJECT_ID,
+        "location": LOCATION
+    }
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -79,7 +104,13 @@ async def chat(
     x_goog_authenticated_user_email: Optional[str] = Header(None)
 ):
     """
-    Endpoint principal de chat usando ADK.
+    Endpoint principal de chat usando ADK Runner.run_async.
+    
+    Según ADK docs: https://google.github.io/adk-docs/runtime/
+    - Usar Runner para ejecutar agentes
+    - run_async retorna un generador de eventos
+    - Iterar con async for sobre los eventos
+    - Procesar event.turn_complete para respuesta final
     
     Args:
         request: Request de chat
@@ -90,13 +121,6 @@ async def chat(
     """
     start_time = time.time()
     
-    # Verificar que el agente esté inicializado
-    if root_agent is None:
-        raise HTTPException(
-            status_code=503, 
-            detail="Orchestrator agent not initialized. Check logs."
-        )
-    
     try:
         # Determinar user ID
         user_id = request.user_id or "default"
@@ -106,31 +130,60 @@ async def chat(
                 user_id = x_goog_authenticated_user_email.split(":")[-1]
         
         _logger.info(
-            f"Chat request: user={user_id}, chat={request.chat_id}, message_length={len(request.message)}",
-            extra={"user_id": user_id, "chat_id": request.chat_id}
+            f"📨 Chat request: user={user_id}, chat={request.chat_id}, message_length={len(request.message)}"
         )
         
-        # Invocar agente ADK
+        # Obtener orquestador (lazy init)
+        orchestrator = get_orchestrator()
+        
+        # Crear Session para ADK
+        # Según docs, Session mantiene el estado entre turns
+        session = Session(
+            session_id=request.chat_id,
+            user_id=user_id
+        )
+        
+        # Crear Runner
+        runner = Runner(orchestrator)
+        
+        # Variables para acumular respuesta
+        response_text = ""
+        events_processed = 0
+        agent_name = "CorpChat (ADK)"
+        
+        # Invocar ADK usando run_async (event loop)
+        # Según docs: run_async retorna async generator de eventos
         try:
-            # ADK run method - ejecuta el agente con el mensaje
-            # Según ADK docs, el método run() retorna un resultado
-            response = root_agent.run(request.message)
+            _logger.info(f"🔄 Iniciando ADK event loop...")
             
-            # Extraer texto de la respuesta
-            # El formato puede variar, adaptarse según la respuesta real de ADK
-            if hasattr(response, 'text'):
-                response_text = response.text
-            elif hasattr(response, 'content'):
-                response_text = response.content
-            elif isinstance(response, str):
-                response_text = response
-            else:
-                response_text = str(response)
+            async for event in runner.run_async(
+                session=session,
+                new_message=request.message
+            ):
+                events_processed += 1
+                _logger.debug(f"📊 Event {events_processed}: partial={getattr(event, 'partial', False)}, turn_complete={getattr(event, 'turn_complete', False)}")
+                
+                # Procesar evento según tipo
+                if hasattr(event, 'content') and event.content:
+                    # Acumular contenido de texto
+                    if hasattr(event.content, 'text'):
+                        response_text += event.content.text
+                    elif hasattr(event.content, 'parts'):
+                        for part in event.content.parts:
+                            if hasattr(part, 'text'):
+                                response_text += part.text
+                
+                # Si es el evento final del turn, terminar
+                if getattr(event, 'turn_complete', False):
+                    _logger.info(f"✅ Turn complete después de {events_processed} eventos")
+                    break
             
-            agent_name = "CorpChat (ADK)"
+            if not response_text:
+                response_text = "Lo siento, no pude generar una respuesta."
+                _logger.warning("⚠️ No se generó respuesta de ADK")
             
         except Exception as e:
-            _logger.error(f"Error invocando agente ADK: {e}", exc_info=True)
+            _logger.error(f"❌ Error en ADK event loop: {e}", exc_info=True)
             response_text = f"Lo siento, hubo un error al procesar tu consulta: {str(e)}"
             agent_name = "CorpChat (error)"
         
@@ -176,11 +229,12 @@ async def chat(
                     "content": response_text,
                     "agent": agent_name,
                     "latency_ms": latency_ms,
+                    "events_processed": events_processed,
                     "created_at": firestore_client.get_server_timestamp()
                 }
             )
             
-            _logger.info(f"✅ Mensajes guardados en Firestore para chat {request.chat_id}")
+            _logger.info(f"✅ Mensajes guardados en Firestore")
             
         except Exception as e:
             _logger.error(f"❌ Error guardando en Firestore: {e}", exc_info=True)
@@ -188,7 +242,8 @@ async def chat(
         return ChatResponse(
             response=response_text,
             agent_used=agent_name,
-            latency_ms=latency_ms
+            latency_ms=latency_ms,
+            events_processed=events_processed
         )
     
     except HTTPException:
@@ -215,9 +270,8 @@ async def get_history(
         Historial de mensajes
     """
     try:
-        # Obtener mensajes desde Firestore
-        # Por simplicidad, retornamos vacío por ahora
-        # En producción, implementar query ordenada
+        # Por ahora retornamos vacío
+        # En producción, implementar query a Firestore
         
         return {
             "chat_id": chat_id,
@@ -233,13 +287,9 @@ async def get_history(
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8080))
     
-    if root_agent is None:
-        _logger.error("❌ FATAL: Orchestrator agent not initialized. Cannot start server.")
-        _logger.error("   Check logs above for initialization errors.")
-        # Aún así iniciar el servidor para que Cloud Run no falle health check
-        # Los requests fallarán con 503
-    
     _logger.info(f"🚀 Iniciando servidor FastAPI en puerto {port}")
-    _logger.info(f"📊 ADK Agent: {'✅ Enabled' if root_agent else '❌ Disabled'}")
+    _logger.info(f"📊 ADK Runtime enabled")
+    _logger.info(f"🌍 Proyecto: {PROJECT_ID}, Región: {LOCATION}")
     
+    # Usar uvicorn con async support
     uvicorn.run(app, host="0.0.0.0", port=port)
