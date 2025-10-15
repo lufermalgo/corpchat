@@ -168,6 +168,7 @@ async def chat(
             _logger.info(f"🔄 Iniciando ADK event loop...")
             
             async for event in runner.run_async(
+                app_name="CorpChat",
                 agent=orchestrator,
                 session=session,
                 new_message=request.message
