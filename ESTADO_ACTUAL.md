@@ -196,6 +196,32 @@ CorpChat/
 
 ---
 
+## 🎯 Nueva Funcionalidad: Model Selector
+
+### ✅ Implementado (15 Oct 2025)
+- **Model Selector**: Usuarios pueden seleccionar modelos desde Open WebUI
+- **Thinking Modes**: 5 modos diferentes (Instant, Standard, Thinking, Auto, Analyst)
+- **Gateway Dinámico**: Soporte para múltiples configuraciones de modelo
+- **OpenAI Compatible**: 100% compatible con API de OpenAI
+- **Tests E2E**: Validación completa de funcionalidad
+
+### Modelos Disponibles
+| Modelo | Display Name | Thinking Mode | Descripción |
+|--------|--------------|---------------|-------------|
+| `gpt-4o-mini` | CorpChat Instant | Instant | Respuestas rápidas |
+| `gpt-4o` | CorpChat Standard | Thinking Mini | Balance velocidad/calidad |
+| `gpt-4` | CorpChat Thinking | Thinking | Análisis profundo |
+| `gpt-4-turbo` | CorpChat Turbo | Auto | Selección automática |
+| `gpt-4o-2024-07-18` | CorpChat Analyst | Thinking | Análisis complejo |
+
+### Próximo Paso: Deploy y Testing
+- [ ] Deploy del Gateway actualizado
+- [ ] Testing E2E del Model Selector
+- [ ] Validación en Open WebUI
+- [ ] Documentación de usuario final
+
+---
+
 ## 📝 COMANDOS ÚTILES
 
 ### Health Checks
@@ -206,6 +232,11 @@ CorpChat/
 ### Consultar Embeddings
 ```bash
 ./tests/e2e/query_embeddings.sh
+```
+
+### Test Model Selector
+```bash
+python3 tests/e2e/test_model_selector.py
 ```
 
 ### Test E2E Completo

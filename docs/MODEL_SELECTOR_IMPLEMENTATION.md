@@ -1,4 +1,4 @@
-# Model Selector Implementation - CorpChat
+# Model Selector Implementation - CorpChat (Modelos REALES de Gemini)
 
 **Última actualización**: 15 Octubre 2025
 
@@ -6,7 +6,7 @@
 
 ## 🎯 Objetivo
 
-Permitir a los usuarios seleccionar diferentes modelos LLM desde Open WebUI, similar a como ChatGPT presenta diferentes "thinking modes". Cada modelo tiene características específicas de pensamiento, temperatura y configuración.
+Permitir a los usuarios seleccionar **modelos REALES de Gemini** desde Open WebUI, similar a como ChatGPT presenta diferentes modelos. Cada modelo tiene capacidades específicas: pensamiento profundo, codificación, análisis, generación de imágenes, etc.
 
 ---
 
@@ -14,9 +14,9 @@ Permitir a los usuarios seleccionar diferentes modelos LLM desde Open WebUI, sim
 
 ### **Flujo de Usuario**
 ```
-Usuario (Open WebUI) → Selector de Modelos → Gateway → Vertex AI Gemini
+Usuario (Open WebUI) → Selector de Modelos Gemini → Gateway → Vertex AI (Modelo Específico)
                     ↓
-            Thinking Mode Aplicado → Respuesta Personalizada
+            Capacidad Aplicada → Respuesta Optimizada
 ```
 
 ### **Componentes Implementados**
@@ -29,27 +29,23 @@ Usuario (Open WebUI) → Selector de Modelos → Gateway → Vertex AI Gemini
 
 ## 🤖 Modelos Disponibles
 
-### **Modelos Rápidos (Instant)**
-| Modelo OpenAI | Display Name | Thinking Mode | Temperature | Max Tokens | Descripción |
-|---------------|--------------|---------------|-------------|------------|-------------|
-| `gpt-4o-mini` | CorpChat Instant | Instant | 0.3 | 1024 | Respuestas rápidas |
-| `gpt-3.5-turbo` | CorpChat Basic | Instant | 0.7 | 1024 | Modelo básico |
+### **Modelos Rápidos**
+| Modelo Gemini | Display Name | Capacidad | Temperature | Max Tokens | Descripción |
+|---------------|--------------|-----------|-------------|------------|-------------|
+| `gemini-2.5-flash` | Gemini 2.5 Flash | Fast | 0.7 | 8192 | Conversaciones generales rápidas |
+| `gemini-1.5-flash` | Gemini 1.5 Flash | Coding | 0.3 | 8192 | Optimizado para desarrollo |
 
-### **Modelos Balanceados (Thinking Mini)**
-| Modelo OpenAI | Display Name | Thinking Mode | Temperature | Max Tokens | Descripción |
-|---------------|--------------|---------------|-------------|------------|-------------|
-| `gpt-4o` | CorpChat Standard | Thinking Mini | 0.7 | 2048 | Balance velocidad/calidad |
+### **Modelos con Pensamiento**
+| Modelo Gemini | Display Name | Capacidad | Temperature | Max Tokens | Descripción |
+|---------------|--------------|-----------|-------------|------------|-------------|
+| `gemini-2.5-flash-thinking` | Gemini 2.5 Flash (Thinking) | Thinking | 0.7 | 8192 | Razonamiento profundo |
+| `gemini-2.0-flash` | Gemini 2.0 Flash | General | 0.7 | 8192 | Tareas generales equilibradas |
 
-### **Modelos Profundos (Thinking)**
-| Modelo OpenAI | Display Name | Thinking Mode | Temperature | Max Tokens | Descripción |
-|---------------|--------------|---------------|-------------|------------|-------------|
-| `gpt-4` | CorpChat Thinking | Thinking | 0.9 | 4096 | Análisis profundo |
-| `gpt-4o-2024-07-18` | CorpChat Analyst | Thinking | 0.1 | 8192 | Análisis complejo |
-
-### **Modelos Automáticos**
-| Modelo OpenAI | Display Name | Thinking Mode | Temperature | Max Tokens | Descripción |
-|---------------|--------------|---------------|-------------|------------|-------------|
-| `gpt-4-turbo` | CorpChat Turbo | Auto | 0.5 | 8192 | Máxima velocidad + calidad |
+### **Modelos Avanzados**
+| Modelo Gemini | Display Name | Capacidad | Temperature | Max Tokens | Descripción |
+|---------------|--------------|-----------|-------------|------------|-------------|
+| `gemini-1.5-pro` | Gemini 1.5 Pro | Analysis | 0.1 | 8192 | Análisis complejos |
+| `gemini-1.5-pro-vision` | Gemini 1.5 Pro (Vision) | Image Generation | 0.7 | 8192 | Análisis visual e imágenes |
 
 ---
 
@@ -58,21 +54,27 @@ Usuario (Open WebUI) → Selector de Modelos → Gateway → Vertex AI Gemini
 ### **1. Configuración de Modelos (`model_selector.py`)**
 
 ```python
-class ThinkingMode(Enum):
-    AUTO = "auto"
-    INSTANT = "instant"
-    THINKING_MINI = "thinking_mini"
+class ModelCapability(Enum):
+    GENERAL = "general"
     THINKING = "thinking"
+    CODING = "coding"
+    IMAGE_GENERATION = "image_generation"
+    ANALYSIS = "analysis"
+    FAST = "fast"
 
 class ModelConfig:
-    def __init__(self, vertex_model, display_name, description, 
-                 thinking_mode, temperature=0.7, max_tokens=2048):
-        self.vertex_model = vertex_model
+    def __init__(self, gemini_model, display_name, description, 
+                 capability, temperature=0.7, max_tokens=8192,
+                 supports_thinking=False, supports_images=False, supports_code=False):
+        self.gemini_model = gemini_model
         self.display_name = display_name
         self.description = description
-        self.thinking_mode = thinking_mode
+        self.capability = capability
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.supports_thinking = supports_thinking
+        self.supports_images = supports_images
+        self.supports_code = supports_code
 ```
 
 ### **2. Endpoint de Modelos (`/v1/models`)**
@@ -95,9 +97,10 @@ async def list_models():
       "object": "model",
       "created": 1677610602,
       "owned_by": "corpchat",
-      "display_name": "CorpChat Standard",
-      "description": "Balance entre velocidad y calidad",
-      "thinking_mode": "thinking_mini"
+        "display_name": "Gemini 2.5 Flash",
+        "description": "Modelo rápido y eficiente para conversaciones generales",
+        "capability": "fast",
+        "gemini_model": "gemini-2.5-flash-001"
     }
   ]
 }
@@ -108,14 +111,14 @@ async def list_models():
 ```python
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
-    # Obtener configuración del modelo seleccionado
+    # Obtener configuración del modelo Gemini seleccionado
     model_config = get_model_config(request.model)
     
-    # Aplicar thinking mode al mensaje
-    enhanced_message = get_thinking_prompt(model_config, user_message)
+    # Aplicar capacidades específicas al mensaje
+    enhanced_message = get_capability_prompt(model_config, user_message)
     
-    # Usar modelo específico de Vertex AI
-    model = GenerativeModel(model_config.vertex_model)
+    # Usar modelo específico de Gemini
+    model = GenerativeModel(model_config.gemini_model)
 ```
 
 ### **4. Thinking Modes**

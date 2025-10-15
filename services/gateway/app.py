@@ -19,7 +19,7 @@ from google.cloud import logging as cloud_logging
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part, Content
 from vertexai.generative_models import ChatSession
-from model_selector import get_model_config, apply_thinking_mode, get_thinking_prompt
+from model_selector import get_model_config, apply_model_config, get_capability_prompt
 
 # Configurar logging
 cloud_logging.Client().setup_logging()
@@ -49,7 +49,7 @@ class Message(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     """Request de chat completion compatible con OpenAI."""
-    model: str = Field(default="gpt-4o", description="Modelo a usar (gpt-4o, gpt-4, gpt-4o-mini, etc.)")
+    model: str = Field(default="gemini-2.5-flash", description="Modelo Gemini a usar (gemini-2.5-flash, gemini-1.5-pro, etc.)")
     messages: List[Message]
     temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0, description="Override temperature del modelo")
     max_tokens: Optional[int] = Field(default=None, description="Override max_tokens del modelo")
@@ -178,10 +178,10 @@ async def generate_stream(
         # Convertir mensajes
         gemini_messages = convert_messages_to_gemini(messages)
         
-        # Aplicar thinking mode al último mensaje si hay model_config
+        # Aplicar capacidades específicas del modelo al último mensaje si hay model_config
         if model_config and gemini_messages:
             last_message = gemini_messages[-1].parts[0].text
-            enhanced_message = get_thinking_prompt(model_config, last_message)
+            enhanced_message = get_capability_prompt(model_config, last_message)
             gemini_messages[-1].parts[0].text = enhanced_message
         
         # Configurar generación
@@ -336,18 +336,21 @@ async def chat_completions(
         model_config = get_model_config(request.model)
         
         _logger.info(
-            f"Using model config: {model_config.display_name} ({model_config.thinking_mode.value})",
+            f"Using Gemini model: {model_config.display_name} ({model_config.capability.value})",
             extra={
                 "user_id": user_id,
                 "selected_model": request.model,
-                "vertex_model": model_config.vertex_model,
-                "thinking_mode": model_config.thinking_mode.value,
+                "gemini_model": model_config.gemini_model,
+                "capability": model_config.capability.value,
+                "supports_thinking": model_config.supports_thinking,
+                "supports_images": model_config.supports_images,
+                "supports_code": model_config.supports_code,
                 "labels": {"service": "gateway", "team": "corpchat"}
             }
         )
         
-        # Inicializar modelo con configuración específica
-        model = GenerativeModel(model_config.vertex_model)
+        # Inicializar modelo Gemini con configuración específica
+        model = GenerativeModel(model_config.gemini_model)
         
         # Si es streaming
         if request.stream:
@@ -366,10 +369,10 @@ async def chat_completions(
         # Si no es streaming
         gemini_messages = convert_messages_to_gemini(request.messages)
         
-        # Aplicar thinking mode al último mensaje
+        # Aplicar capacidades específicas del modelo al último mensaje
         if gemini_messages:
             last_message = gemini_messages[-1].parts[0].text
-            enhanced_message = get_thinking_prompt(model_config, last_message)
+            enhanced_message = get_capability_prompt(model_config, last_message)
             gemini_messages[-1].parts[0].text = enhanced_message
         
         # Configuración de generación con override del usuario o configuración del modelo

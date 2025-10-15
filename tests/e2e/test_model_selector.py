@@ -29,20 +29,22 @@ def test_models_endpoint():
         print(f"✅ Status: {response.status_code}")
         print(f"✅ Models found: {len(data['data'])}")
         
-        # Verificar que tenemos modelos con thinking modes
-        expected_models = ["gpt-4o-mini", "gpt-4o", "gpt-4", "gpt-4-turbo"]
+        # Verificar que tenemos modelos reales de Gemini
+        expected_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"]
         found_models = [model["id"] for model in data["data"]]
         
         for expected in expected_models:
             if expected in found_models:
-                print(f"✅ Model found: {expected}")
+                print(f"✅ Gemini model found: {expected}")
             else:
-                print(f"❌ Model missing: {expected}")
+                print(f"❌ Gemini model missing: {expected}")
         
         # Mostrar modelos disponibles
-        print("\n📋 Modelos disponibles:")
+        print("\n📋 Modelos Gemini disponibles:")
         for model in data["data"]:
-            print(f"  - {model['id']} (owned by: {model['owned_by']})")
+            capability = model.get("capability", "unknown")
+            display_name = model.get("display_name", model["id"])
+            print(f"  - {model['id']} ({display_name}) - {capability}")
         
         return True
         
@@ -101,40 +103,40 @@ def test_model_selection(model_name: str, message: str) -> Dict:
         return {"success": False, "error": str(e)}
 
 
-def test_thinking_modes():
-    """Test 3: Verificar que diferentes thinking modes producen respuestas distintas."""
-    print("\n🧪 Test 3: Comparar Thinking Modes")
+def test_gemini_capabilities():
+    """Test 3: Verificar que diferentes capacidades de Gemini producen respuestas distintas."""
+    print("\n🧪 Test 3: Comparar Capacidades de Gemini")
     
     models_to_test = [
-        ("gpt-4o-mini", "Instant"),
-        ("gpt-4o", "Thinking Mini"),
-        ("gpt-4", "Thinking"),
-        ("gpt-4-turbo", "Auto")
+        ("gemini-2.5-flash", "Fast"),
+        ("gemini-2.5-flash-thinking", "Thinking"),
+        ("gemini-1.5-pro", "Analysis"),
+        ("gemini-1.5-flash", "Coding")
     ]
     
     message = "Explica qué es la inteligencia artificial de manera que un niño de 8 años pueda entenderlo."
     results = []
     
-    for model_name, expected_mode in models_to_test:
-        print(f"\n🔍 Testing {model_name} ({expected_mode})")
+    for model_name, expected_capability in models_to_test:
+        print(f"\n🔍 Testing {model_name} ({expected_capability})")
         result = test_model_selection(model_name, message)
         
         if result["success"]:
             results.append({
                 "model": model_name,
-                "mode": expected_mode,
+                "capability": expected_capability,
                 "response_time": result["response_time"],
                 "tokens": result["tokens"],
                 "content_length": len(result["content"])
             })
     
     # Comparar resultados
-    print("\n📊 Comparación de Thinking Modes:")
-    print("Modelo                | Tiempo | Tokens | Longitud")
-    print("-" * 50)
+    print("\n📊 Comparación de Capacidades Gemini:")
+    print("Modelo                     | Tiempo | Tokens | Longitud | Capacidad")
+    print("-" * 65)
     
     for result in results:
-        print(f"{result['model']:<20} | {result['response_time']:>5.2f}s | {result['tokens']:>6} | {result['content_length']:>8}")
+        print(f"{result['model']:<25} | {result['response_time']:>5.2f}s | {result['tokens']:>6} | {result['content_length']:>8} | {result['capability']}")
     
     return results
 
@@ -143,7 +145,7 @@ def test_streaming():
     """Test 4: Verificar streaming con diferentes modelos."""
     print("\n🧪 Test 4: Streaming con Modelos")
     
-    models_to_test = ["gpt-4o-mini", "gpt-4"]
+    models_to_test = ["gemini-2.5-flash", "gemini-1.5-pro"]
     message = "Cuenta una historia corta sobre un robot que aprende a soñar."
     
     for model_name in models_to_test:
@@ -212,7 +214,7 @@ def main():
     
     # Test 2: Selección de modelos
     print("\n" + "=" * 50)
-    test_results = test_thinking_modes()
+    test_results = test_gemini_capabilities()
     
     # Test 3: Streaming
     print("\n" + "=" * 50)
@@ -229,17 +231,18 @@ def main():
         print("❌ Test 1: Endpoint /v1/models - FAILED")
     
     if test_results:
-        print(f"✅ Test 2: Thinking Modes - PASSED ({len(test_results)} models tested)")
+        print(f"✅ Test 2: Gemini Capabilities - PASSED ({len(test_results)} models tested)")
     else:
-        print("❌ Test 2: Thinking Modes - FAILED")
+        print("❌ Test 2: Gemini Capabilities - FAILED")
     
     print("✅ Test 3: Streaming - COMPLETED")
     
     print("\n🎯 NEXT STEPS:")
-    print("1. Verificar que Open WebUI puede listar los modelos")
-    print("2. Probar selección de modelos en la UI")
-    print("3. Validar que las respuestas varían según el modelo")
-    print("4. Configurar modelos por defecto por usuario")
+    print("1. Verificar que Open WebUI puede listar los modelos Gemini")
+    print("2. Probar selección de modelos reales de Gemini en la UI")
+    print("3. Validar que las respuestas varían según la capacidad del modelo")
+    print("4. Configurar modelos por defecto por usuario según sus necesidades")
+    print("5. Probar capacidades específicas (coding, analysis, thinking)")
 
 
 if __name__ == "__main__":
