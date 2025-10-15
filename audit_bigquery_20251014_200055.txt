@@ -1,0 +1,105 @@
+======================================
+🔍 AUDITORÍA BIGQUERY - PROYECTO COMPARTIDO
+======================================
+Proyecto: genai-385616
+Dataset objetivo: corpchat
+Tabla objetivo: embeddings
+⚠️  MODO: SOLO LECTURA (no modifica nada)
+======================================
+
+1️⃣  Verificando autenticación BigQuery...
+   Proyecto configurado: genai-385616
+
+2️⃣  Listando datasets existentes en genai-385616...
+   Datasets existentes:       23
+
+   📋 Datasets (primeros 50):
+            datasetId            
+ ------------------------------- 
+  2017_2018_fndds                
+  INC_84                         
+  TestComentariosDialogflow      
+  agent_analytics                
+  cargo_candidato                
+  chivopets                      
+  clientes_exito                 
+  dataset_pruebas_permisos       
+  demo_genai                     
+  demos_summan                   
+  embeddings                     
+  epm_demo                       
+  exito_bitacora_conversaciones  
+  exito_gestion_plataformas      
+  jfk                            
+  linea_directa                  
+  marco_farmatodo                
+  poc_metro                      
+  retail                         
+  spotify_e2e_test               
+  summan_academy                 
+  test_jfk                       
+  test_json_metro                
+
+   🔍 Buscando datasets con prefijo 'corpchat':
+   ✅ Ninguno encontrado (seguro para crear)
+
+3️⃣  Verificando dataset 'corpchat'...
+   ✅ Dataset 'corpchat' NO existe (seguro para crear)
+
+4️⃣  Buscando tablas relacionadas con 'embedding' en todos los datasets...
+   (Esto puede tomar unos segundos...)
+
+   ✅ No se encontraron tablas con 'embedding' en el nombre
+
+5️⃣  Verificando permisos del service account...
+   Service Account: corpchat-app@genai-385616.iam.gserviceaccount.com
+
+   Roles de BigQuery asignados:
+   ℹ️  Sin roles de BigQuery asignados
+
+6️⃣  Estimando costos de BigQuery storage...
+   Total datasets con datos: 23
+   ℹ️  Para costo detallado, revisar Cloud Billing
+
+7️⃣  Verificando quotas de BigQuery...
+   Consultando límites del proyecto...
+
+   ℹ️  Quotas de BigQuery por proyecto:
+      - Queries por día: 2,000 (default, puede ser mayor)
+      - Bytes escaneados por día: Sin límite por defecto
+      - Slots concurrentes: 2,000 (on-demand)
+      - Jobs concurrentes: 50-100
+
+   Para verificar uso actual:
+   → https://console.cloud.google.com/bigquery/admin/quotas?project=genai-385616
+
+======================================
+📊 RESUMEN DE AUDITORÍA BIGQUERY
+======================================
+
+   ✅ No se detectaron colisiones
+   ✅ Seguro para crear dataset 'corpchat' y tabla 'embeddings'
+
+======================================
+🔒 RECOMENDACIONES
+======================================
+
+1. Si el dataset 'corpchat' ya existe:
+   → Verificar quién lo creó y para qué
+   → Considerar sufijo: corpchat_mvp, corpchat_dev, etc.
+   → NO modificar tablas existentes
+
+2. Antes de ejecutar setup_bigquery_vector_store.sh:
+   → Revisar este reporte completo
+   → Coordinar con el equipo si hay recursos compartidos
+   → Asegurar que service account tiene permisos
+
+3. Naming convention sugerida:
+   → Dataset: corpchat (o corpchat_ENV si hay conflicto)
+   → Tabla: embeddings
+   → Views: embeddings_view, embeddings_stats
+
+======================================
+📝 Auditoría completada
+Fecha: Tue Oct 14 20:01:09 -05 2025
+======================================
