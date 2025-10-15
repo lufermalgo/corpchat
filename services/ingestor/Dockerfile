@@ -8,13 +8,16 @@ LABEL service="ingestor"
 # Configurar workdir
 WORKDIR /app
 
-# Instalar dependencias del sistema (Tesseract para OCR)
+# Instalar dependencias del sistema (Tesseract + build tools)
 RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-spa \
     tesseract-ocr-eng \
     libgomp1 \
+    build-essential \
+    gcc \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements del ingestor
