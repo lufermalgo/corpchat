@@ -14,21 +14,18 @@ steps:
       - '-t'
       - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:latest'
       - '.'
-    dir: 'services/gateway'
 
   # Push image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
-    dir: 'services/gateway'
 
   # Push latest tag
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:latest'
-    dir: 'services/gateway'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'

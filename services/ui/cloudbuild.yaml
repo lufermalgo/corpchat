@@ -17,21 +17,18 @@ steps:
       - '--build-arg'
       - 'APP_TITLE=${_APP_TITLE}'
       - '.'
-    dir: 'services/ui'
 
   # Push image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
-    dir: 'services/ui'
 
   # Push latest tag
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - 'gcr.io/${PROJECT_ID}/${_SERVICE_NAME}:latest'
-    dir: 'services/ui'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'

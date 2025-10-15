@@ -5,7 +5,7 @@ substitutions:
   _ENVIRONMENT: dev
 
 steps:
-  # Build Docker image
+  # Build Docker image (context desde services/agents)
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
@@ -16,7 +16,7 @@ steps:
       - '-f'
       - 'orchestrator/Dockerfile'
       - '.'
-    dir: 'services/agents'
+    dir: '../'
 
   # Push image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
