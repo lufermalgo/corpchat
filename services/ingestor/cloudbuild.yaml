@@ -1,0 +1,66 @@
+# Cloud Build configuration para Ingestor
+substitutions:
+  _SERVICE_NAME: corpchat-ingestor
+  _REGION: us-central1
+  _ENVIRONMENT: dev
+
+steps:
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/corpchat/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/corpchat/${_SERVICE_NAME}:latest'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+
+  # Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/corpchat/${_SERVICE_NAME}:${SHORT_SHA}'
+
+  # Push latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/corpchat/${_SERVICE_NAME}:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/corpchat/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--min-instances=0'
+      - '--max-instances=10'
+      - '--memory=2Gi'
+      - '--cpu=2'
+      - '--timeout=900s'
+      - '--concurrency=10'
+      - '--service-account=corpchat-app@${PROJECT_ID}.iam.gserviceaccount.com'
+      - '--set-env-vars=GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${_REGION}'
+      - '--labels=team=corpchat,env=${_ENVIRONMENT},service=ingestor'
+      - '--no-allow-unauthenticated'
+      - '--ingress=internal-and-cloud-load-balancing'
+
+# Timeout para el build completo
+timeout: '1800s'
+
+# Opciones adicionales
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Imágenes a mantener
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/corpchat/${_SERVICE_NAME}:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/corpchat/${_SERVICE_NAME}:latest'
+

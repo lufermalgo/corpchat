@@ -178,7 +178,7 @@ async def process_document_async(
     mime_type: Optional[str] = None
 ):
     """
-    Procesa un documento de forma asíncrona.
+    Procesa un documento de forma asíncrona usando el pipeline completo.
     
     Pipeline completo:
     1. Download de GCS
@@ -203,20 +203,38 @@ async def process_document_async(
         processing_jobs[job_id]["status"] = "processing"
         processing_jobs[job_id]["progress"] = 0.1
         
-        # TODO: Implementar pipeline completo
-        # Por ahora, placeholder para MVP
+        # Importar pipeline
+        from pipeline import IngestionPipeline
         
-        # Simular procesamiento (será reemplazado por pipeline real)
-        import asyncio
-        await asyncio.sleep(2)
+        # Ejecutar pipeline
+        pipeline = IngestionPipeline()
+        result = await pipeline.process_file(
+            gcs_path=gcs_path,
+            attachment_id=attachment_id,
+            chat_id=chat_id,
+            user_id=user_id,
+            mime_type=mime_type
+        )
         
         # Actualizar estado final
-        processing_jobs[job_id]["status"] = "completed"
-        processing_jobs[job_id]["progress"] = 1.0
-        processing_jobs[job_id]["chunks_processed"] = 0  # Placeholder
-        processing_jobs[job_id]["completed_at"] = datetime.now()
-        
-        _logger.info(f"✅ Procesamiento completado: {job_id}")
+        if result["success"]:
+            processing_jobs[job_id]["status"] = "completed"
+            processing_jobs[job_id]["progress"] = 1.0
+            processing_jobs[job_id]["chunks_processed"] = result["chunks_stored"]
+            processing_jobs[job_id]["extraction_method"] = result["extraction_method"]
+            processing_jobs[job_id]["processing_time_s"] = result["processing_time_s"]
+            processing_jobs[job_id]["completed_at"] = datetime.now()
+            
+            _logger.info(
+                f"✅ Procesamiento completado: {job_id} "
+                f"({result['chunks_stored']} chunks en {result['processing_time_s']}s)"
+            )
+        else:
+            processing_jobs[job_id]["status"] = "failed"
+            processing_jobs[job_id]["error"] = result.get("error", "Unknown error")
+            processing_jobs[job_id]["completed_at"] = datetime.now()
+            
+            _logger.error(f"❌ Procesamiento fallido: {job_id} - {result.get('error')}")
     
     except Exception as e:
         _logger.error(f"❌ Error en procesamiento {job_id}: {e}", exc_info=True)
