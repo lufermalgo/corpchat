@@ -27,6 +27,43 @@ class FirestoreClient:
         self._db = firestore.Client(project=project_id) if project_id else firestore.Client()
         _logger.info(f"FirestoreClient inicializado con prefijo: {self.COLLECTION_PREFIX}")
     
+    # ===== UTILIDADES =====
+    
+    def get_server_timestamp(self):
+        """
+        Retorna el objeto SERVER_TIMESTAMP de Firestore.
+        
+        Returns:
+            Objeto SERVER_TIMESTAMP para usar en writes
+        """
+        return firestore.SERVER_TIMESTAMP
+    
+    def get_document(self, path: str) -> Optional[Dict[str, Any]]:
+        """
+        Obtiene un documento por su path completo.
+        
+        Args:
+            path: Path del documento (ej: "chats/chat123")
+        
+        Returns:
+            Diccionario con datos del documento o None
+        """
+        doc_ref = self._db.document(path)
+        doc = doc_ref.get()
+        return doc.to_dict() if doc.exists else None
+    
+    def set_document(self, path: str, data: Dict[str, Any], merge: bool = False) -> None:
+        """
+        Crea o actualiza un documento por su path completo.
+        
+        Args:
+            path: Path del documento (ej: "chats/chat123")
+            data: Datos a escribir
+            merge: Si True, hace merge; si False, sobrescribe
+        """
+        doc_ref = self._db.document(path)
+        doc_ref.set(data, merge=merge)
+    
     # ===== USUARIOS =====
     
     def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
