@@ -2,9 +2,7 @@
 # Python 3.13
 
 # ADK (Agent Development Kit)
-# NOTA: ADK se instalará en fase posterior - no disponible en PyPI público
-# google-genai-adk==1.8.0
-google-generativeai==0.8.1
+google-adk>=0.2.0
 
 # Google Cloud
 google-cloud-firestore==2.19.0

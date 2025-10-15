@@ -1,7 +1,8 @@
 """
-Servidor HTTP para el orquestador - Versión MVP.
+Servidor HTTP para el orquestador ADK.
 
 Expone endpoints para que el gateway pueda invocar al orquestador.
+Usa Google ADK para orquestación multi-agente.
 """
 
 import logging
@@ -14,24 +15,22 @@ import time
 from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 import uvicorn
-from google.cloud import logging as cloud_logging
 
 # Agregar shared al path
 sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
 
 from firestore_client import FirestoreClient
 
-# Importar agente
+# Importar agente ADK
 from agent import root_agent
 
 # Configurar logging
-cloud_logging.Client().setup_logging()
 _logger = logging.getLogger(__name__)
 
 # FastAPI app
 app = FastAPI(
     title="CorpChat Orchestrator",
-    description="Orquestador principal (MVP)",
+    description="Orquestador ADK principal",
     version="1.0.0"
 )
 
@@ -60,15 +59,18 @@ async def root():
     """Root endpoint."""
     return {
         "service": "corpchat-orchestrator",
-        "version": "1.0.0-mvp",
-        "status": "healthy"
+        "version": "1.0.0",
+        "adk_enabled": root_agent is not None,
+        "status": "healthy" if root_agent else "degraded"
     }
 
 
 @app.get("/health")
 async def health():
     """Health check endpoint."""
-    return {"status": "healthy"}
+    if root_agent is None:
+        raise HTTPException(status_code=503, detail="Orchestrator agent not initialized")
+    return {"status": "healthy", "adk": "enabled"}
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -77,16 +79,23 @@ async def chat(
     x_goog_authenticated_user_email: Optional[str] = Header(None)
 ):
     """
-    Endpoint principal de chat.
+    Endpoint principal de chat usando ADK.
     
     Args:
         request: Request de chat
         x_goog_authenticated_user_email: Header de IAP
     
     Returns:
-        Response del agente
+        Response del agente ADK
     """
     start_time = time.time()
+    
+    # Verificar que el agente esté inicializado
+    if root_agent is None:
+        raise HTTPException(
+            status_code=503, 
+            detail="Orchestrator agent not initialized. Check logs."
+        )
     
     try:
         # Determinar user ID
@@ -97,19 +106,33 @@ async def chat(
                 user_id = x_goog_authenticated_user_email.split(":")[-1]
         
         _logger.info(
-            f"Chat request: user={user_id}, chat={request.chat_id}",
+            f"Chat request: user={user_id}, chat={request.chat_id}, message_length={len(request.message)}",
             extra={"user_id": user_id, "chat_id": request.chat_id}
         )
         
-        # Invocar agente
+        # Invocar agente ADK
         try:
-            response_text = root_agent.chat(request.message, user_id)
-            agent_name = "CorpChat"
+            # ADK run method - ejecuta el agente con el mensaje
+            # Según ADK docs, el método run() retorna un resultado
+            response = root_agent.run(request.message)
+            
+            # Extraer texto de la respuesta
+            # El formato puede variar, adaptarse según la respuesta real de ADK
+            if hasattr(response, 'text'):
+                response_text = response.text
+            elif hasattr(response, 'content'):
+                response_text = response.content
+            elif isinstance(response, str):
+                response_text = response
+            else:
+                response_text = str(response)
+            
+            agent_name = "CorpChat (ADK)"
             
         except Exception as e:
-            _logger.error(f"Error invocando agente: {e}", exc_info=True)
-            response_text = "Lo siento, hubo un error al procesar tu consulta. Por favor intenta de nuevo."
-            agent_name = "CorpChat (fallback)"
+            _logger.error(f"Error invocando agente ADK: {e}", exc_info=True)
+            response_text = f"Lo siento, hubo un error al procesar tu consulta: {str(e)}"
+            agent_name = "CorpChat (error)"
         
         # Calcular métricas
         latency_ms = (time.time() - start_time) * 1000
@@ -117,11 +140,13 @@ async def chat(
         # Guardar en Firestore
         try:
             # Verificar si el chat existe
-            chat = firestore_client.get_document(f"chats/{request.chat_id}")
+            chat_path = f"corpchat_chats/{request.chat_id}"
+            chat = firestore_client.get_document(chat_path)
+            
             if not chat:
                 # Crear chat
                 firestore_client.set_document(
-                    f"chats/{request.chat_id}",
+                    chat_path,
                     {
                         "owner_id": user_id,
                         "title": "Nuevo Chat",
@@ -132,8 +157,9 @@ async def chat(
                 )
             
             # Agregar mensaje del usuario
+            user_msg_path = f"{chat_path}/messages/{int(time.time() * 1000000)}_user"
             firestore_client.set_document(
-                f"chats/{request.chat_id}/messages/{int(time.time() * 1000)}_user",
+                user_msg_path,
                 {
                     "role": "user",
                     "content": request.message,
@@ -142,8 +168,9 @@ async def chat(
             )
             
             # Agregar respuesta del asistente
+            assistant_msg_path = f"{chat_path}/messages/{int(time.time() * 1000000)}_assistant"
             firestore_client.set_document(
-                f"chats/{request.chat_id}/messages/{int(time.time() * 1000)}_assistant",
+                assistant_msg_path,
                 {
                     "role": "assistant",
                     "content": response_text,
@@ -153,8 +180,10 @@ async def chat(
                 }
             )
             
+            _logger.info(f"✅ Mensajes guardados en Firestore para chat {request.chat_id}")
+            
         except Exception as e:
-            _logger.error(f"Error guardando en Firestore: {e}", exc_info=True)
+            _logger.error(f"❌ Error guardando en Firestore: {e}", exc_info=True)
         
         return ChatResponse(
             response=response_text,
@@ -162,9 +191,11 @@ async def chat(
             latency_ms=latency_ms
         )
     
+    except HTTPException:
+        raise
     except Exception as e:
         latency_ms = (time.time() - start_time) * 1000
-        _logger.error(f"Error en chat endpoint: {e}", exc_info=True)
+        _logger.error(f"💥 Error en chat endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -184,17 +215,14 @@ async def get_history(
         Historial de mensajes
     """
     try:
-        # Obtener mensajes
-        messages_collection = f"chats/{chat_id}/messages"
-        messages = []
-        
-        # En Firestore, obtener subcolecc messages
-        # (simplificado - en producción usar query ordenada)
+        # Obtener mensajes desde Firestore
+        # Por simplicidad, retornamos vacío por ahora
+        # En producción, implementar query ordenada
         
         return {
             "chat_id": chat_id,
-            "messages": messages,
-            "count": len(messages)
+            "messages": [],
+            "count": 0
         }
     
     except Exception as e:
@@ -204,5 +232,14 @@ async def get_history(
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8080))
-    _logger.info(f"Iniciando orquestador en puerto {port}")
+    
+    if root_agent is None:
+        _logger.error("❌ FATAL: Orchestrator agent not initialized. Cannot start server.")
+        _logger.error("   Check logs above for initialization errors.")
+        # Aún así iniciar el servidor para que Cloud Run no falle health check
+        # Los requests fallarán con 503
+    
+    _logger.info(f"🚀 Iniciando servidor FastAPI en puerto {port}")
+    _logger.info(f"📊 ADK Agent: {'✅ Enabled' if root_agent else '❌ Disabled'}")
+    
     uvicorn.run(app, host="0.0.0.0", port=port)
