@@ -141,9 +141,10 @@ async def chat(
         
         # Crear Session para ADK
         # Según docs, Session mantiene el estado entre turns
+        # Estructura: id (session ID) y appName (nombre de la app)
         session = Session(
-            session_id=request.chat_id,
-            user_id=user_id
+            id=request.chat_id,
+            appName="CorpChat"
         )
         
         # Crear Runner
