@@ -14,6 +14,9 @@ _logger = logging.getLogger(__name__)
 class FirestoreClient:
     """Cliente de Firestore para operaciones de CorpChat."""
     
+    # Prefijo para colecciones (evita colisiones en Firestore compartido)
+    COLLECTION_PREFIX = "corpchat_"
+    
     def __init__(self, project_id: Optional[str] = None):
         """
         Inicializa el cliente de Firestore.
@@ -22,7 +25,7 @@ class FirestoreClient:
             project_id: ID del proyecto GCP (opcional, usa default)
         """
         self._db = firestore.Client(project=project_id) if project_id else firestore.Client()
-        _logger.info("FirestoreClient inicializado")
+        _logger.info(f"FirestoreClient inicializado con prefijo: {self.COLLECTION_PREFIX}")
     
     # ===== USUARIOS =====
     
@@ -36,7 +39,7 @@ class FirestoreClient:
         Returns:
             Diccionario con datos del usuario o None
         """
-        doc_ref = self._db.collection('users').document(user_id)
+        doc_ref = self._db.collection(f'{self.COLLECTION_PREFIX}users').document(user_id)
         doc = doc_ref.get()
         return doc.to_dict() if doc.exists else None
     
@@ -49,7 +52,7 @@ class FirestoreClient:
             data: Datos del usuario
         """
         data['updated_at'] = datetime.now()
-        self._db.collection('users').document(user_id).set(data, merge=True)
+        self._db.collection(f'{self.COLLECTION_PREFIX}users').document(user_id).set(data, merge=True)
         _logger.info(f"Usuario actualizado: {user_id}")
     
     # ===== CHATS/SESIONES =====
@@ -64,7 +67,7 @@ class FirestoreClient:
         Returns:
             Diccionario con datos del chat o None
         """
-        doc_ref = self._db.collection('chats').document(chat_id)
+        doc_ref = self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id)
         doc = doc_ref.get()
         return doc.to_dict() if doc.exists else None
     
@@ -93,7 +96,7 @@ class FirestoreClient:
             'updated_at': datetime.now(),
             'message_count': 0
         }
-        self._db.collection('chats').document(chat_id).set(data)
+        self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).set(data)
         _logger.info(f"Chat creado: {chat_id} por {owner_id}")
     
     def update_chat(self, chat_id: str, data: Dict[str, Any]) -> None:
@@ -105,7 +108,7 @@ class FirestoreClient:
             data: Datos a actualizar
         """
         data['updated_at'] = datetime.now()
-        self._db.collection('chats').document(chat_id).set(data, merge=True)
+        self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).set(data, merge=True)
     
     def get_user_chats(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """
@@ -118,7 +121,7 @@ class FirestoreClient:
         Returns:
             Lista de chats del usuario
         """
-        chats_ref = self._db.collection('chats')
+        chats_ref = self._db.collection(f'{self.COLLECTION_PREFIX}chats')
         query = chats_ref.where(
             filter=FieldFilter('members', 'array_contains', user_id)
         ).order_by('updated_at', direction=firestore.Query.DESCENDING).limit(limit)
@@ -146,7 +149,7 @@ class FirestoreClient:
         Returns:
             ID del mensaje creado
         """
-        messages_ref = self._db.collection('chats').document(chat_id).collection('messages')
+        messages_ref = self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).collection(f'{self.COLLECTION_PREFIX}messages')
         
         message_data = {
             'role': role,
@@ -158,7 +161,7 @@ class FirestoreClient:
         doc_ref = messages_ref.add(message_data)[1]
         
         # Incrementar contador de mensajes
-        self._db.collection('chats').document(chat_id).update({
+        self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).update({
             'message_count': firestore.Increment(1),
             'updated_at': datetime.now()
         })
@@ -180,7 +183,7 @@ class FirestoreClient:
         Returns:
             Lista de mensajes ordenados por timestamp descendente
         """
-        messages_ref = self._db.collection('chats').document(chat_id).collection('messages')
+        messages_ref = self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).collection(f'{self.COLLECTION_PREFIX}messages')
         query = messages_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(limit)
         
         messages = [doc.to_dict() | {'id': doc.id} for doc in query.stream()]
@@ -222,7 +225,7 @@ class FirestoreClient:
             'processed_at': None,
             'error': None
         }
-        self._db.collection('attachments').document(attachment_id).set(data)
+        self._db.collection(f'{self.COLLECTION_PREFIX}attachments').document(attachment_id).set(data)
         _logger.info(f"Adjunto registrado: {attachment_id}")
     
     def update_attachment_status(
@@ -246,7 +249,7 @@ class FirestoreClient:
         if error:
             data['error'] = error
         
-        self._db.collection('attachments').document(attachment_id).update(data)
+        self._db.collection(f'{self.COLLECTION_PREFIX}attachments').document(attachment_id).update(data)
         _logger.info(f"Adjunto {attachment_id} → {status}")
     
     def get_attachment(self, attachment_id: str) -> Optional[Dict[str, Any]]:
@@ -259,7 +262,7 @@ class FirestoreClient:
         Returns:
             Diccionario con datos del adjunto o None
         """
-        doc_ref = self._db.collection('attachments').document(attachment_id)
+        doc_ref = self._db.collection(f'{self.COLLECTION_PREFIX}attachments').document(attachment_id)
         doc = doc_ref.get()
         return doc.to_dict() if doc.exists else None
     
@@ -273,7 +276,7 @@ class FirestoreClient:
         Returns:
             Lista de adjuntos
         """
-        attachments_ref = self._db.collection('attachments')
+        attachments_ref = self._db.collection(f'{self.COLLECTION_PREFIX}attachments')
         query = attachments_ref.where(
             filter=FieldFilter('chat_id', '==', chat_id)
         ).order_by('uploaded_at', direction=firestore.Query.DESCENDING)
@@ -310,7 +313,7 @@ class FirestoreClient:
             'created_at': datetime.now()
         }
         
-        self._db.collection('chats').document(chat_id).collection('chunks').document(chunk_id).set(chunk_data)
+        self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).collection(f'{self.COLLECTION_PREFIX}chunks').document(chunk_id).set(chunk_data)
         _logger.debug(f"Chunk {chunk_id} agregado al chat {chat_id}")
     
     def search_chunks(
@@ -336,7 +339,7 @@ class FirestoreClient:
         Returns:
             Lista de chunks ordenados por similitud
         """
-        chunks_ref = self._db.collection('chats').document(chat_id).collection('chunks')
+        chunks_ref = self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).collection(f'{self.COLLECTION_PREFIX}chunks')
         all_chunks = [doc.to_dict() | {'id': doc.id} for doc in chunks_ref.stream()]
         
         # Calcular similitud coseno
@@ -366,7 +369,7 @@ class FirestoreClient:
         Returns:
             Número de chunks eliminados
         """
-        chunks_ref = self._db.collection('chats').document(chat_id).collection('chunks')
+        chunks_ref = self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).collection(f'{self.COLLECTION_PREFIX}chunks')
         deleted_count = 0
         
         # Eliminar en batches
@@ -414,7 +417,7 @@ class FirestoreClient:
             'version': 1
         }
         
-        self._db.collection('knowledge_base').document(kb_domain).collection('contents').document(content_id).set(data)
+        self._db.collection(f'{self.COLLECTION_PREFIX}knowledge_base').document(kb_domain).collection(f'{self.COLLECTION_PREFIX}contents').document(content_id).set(data)
         _logger.info(f"Contenido {content_id} agregado a KB {kb_domain}")
     
     def search_kb(
@@ -437,7 +440,7 @@ class FirestoreClient:
         Returns:
             Lista de contenidos relevantes
         """
-        kb_ref = self._db.collection('knowledge_base').document(kb_domain).collection('contents')
+        kb_ref = self._db.collection(f'{self.COLLECTION_PREFIX}knowledge_base').document(kb_domain).collection(f'{self.COLLECTION_PREFIX}contents')
         
         # Por ahora, retornar los más recientes
         # TODO: Implementar búsqueda vectorial

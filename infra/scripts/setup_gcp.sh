@@ -2,19 +2,80 @@
 set -euo pipefail
 
 # Script de configuración completa de GCP para CorpChat MVP
-# Proyecto: genai-385616
+# ⚠️  ADVERTENCIA: Este script crea recursos en un proyecto GCP COMPARTIDO
+# ⚠️  Ejecutar ./audit_gcp.sh ANTES de usar este script
 
 PROJECT_ID="${PROJECT_ID:-genai-385616}"
 REGION="${REGION:-us-central1}"
 GCS_BUCKET="${GCS_BUCKET:-corpchat-${PROJECT_ID}-attachments}"
 SERVICE_ACCOUNT_NAME="corpchat-app"
 
+# Parsear argumentos
+DRY_RUN=false
+for arg in "$@"; do
+    case $arg in
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+    esac
+done
+
 echo "======================================"
 echo "CorpChat MVP - Setup GCP"
 echo "======================================"
+echo "⚠️  PROYECTO COMPARTIDO: genai-385616"
+echo "======================================"
 echo "Proyecto: ${PROJECT_ID}"
 echo "Región: ${REGION}"
+echo "Bucket: ${GCS_BUCKET}"
+echo "Service Account: ${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+if [[ "${DRY_RUN}" == "true" ]]; then
+    echo ""
+    echo "🔍 MODO DRY-RUN: Solo mostrará qué haría sin ejecutar"
+fi
+
 echo "======================================"
+echo ""
+
+# Verificar que se ejecutó audit_gcp.sh
+echo "⚠️  IMPORTANTE: ¿Ejecutaste ./audit_gcp.sh y revisaste el reporte?"
+echo "   Este proyecto está compartido con otros compañeros."
+echo "   Crear recursos sin auditar puede romper proyectos existentes."
+echo ""
+read -p "¿Ejecutaste audit_gcp.sh y es seguro continuar? (yes/no): " -r AUDIT_CONFIRM
+if [[ "$AUDIT_CONFIRM" != "yes" ]]; then
+    echo "❌ Abortado. Ejecuta primero: ./audit_gcp.sh"
+    exit 1
+fi
+
+echo ""
+echo "Recursos que se crearán:"
+echo "  ✓ Firestore (default) en ${REGION}"
+echo "  ✓ Bucket GCS: gs://${GCS_BUCKET}"
+echo "  ✓ Service Account: ${SERVICE_ACCOUNT_NAME}"
+echo "  ✓ Pub/Sub Topic: attachments-finalized"
+echo "  ✓ Secret: corpchat-config"
+echo ""
+echo "⚠️  Todos los recursos usan prefijo 'corpchat-' para evitar colisiones"
+echo "⚠️  Firestore usará colecciones con prefijo 'corpchat_'"
+echo ""
+read -p "¿Continuar con la creación de recursos? (yes/no): " -r FINAL_CONFIRM
+if [[ "$FINAL_CONFIRM" != "yes" ]]; then
+    echo "❌ Abortado por el usuario"
+    exit 0
+fi
+
+if [[ "${DRY_RUN}" == "true" ]]; then
+    echo ""
+    echo "✅ DRY-RUN completado. No se modificó nada."
+    echo "   Para ejecutar realmente, quita el flag --dry-run"
+    exit 0
+fi
+
+echo ""
+echo "▶️  Iniciando configuración..."
 echo ""
 
 # 1. Configurar proyecto
