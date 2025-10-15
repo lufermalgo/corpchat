@@ -1,0 +1,15 @@
+# Ejemplo de archivo terraform.tfvars
+# Copiar a terraform.tfvars y ajustar valores
+
+project_id   = "your-gcp-project-id"
+region       = "us-central1"
+client_name  = "example-client"
+environment  = "dev"
+
+# Container images desde Artifact Registry
+# Formato: REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE:TAG
+gateway_image      = "us-central1-docker.pkg.dev/genai-385616/corpchat/corpchat-gateway:latest"
+ui_image           = "us-central1-docker.pkg.dev/genai-385616/corpchat/corpchat-ui:latest"
+orchestrator_image = "us-central1-docker.pkg.dev/genai-385616/corpchat/corpchat-orchestrator:latest"
+ingestor_image     = "us-central1-docker.pkg.dev/genai-385616/corpchat/corpchat-ingestor:latest"
+
