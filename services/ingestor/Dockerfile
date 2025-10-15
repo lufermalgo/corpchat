@@ -28,7 +28,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copiar código compartido (agents/shared)
-COPY services/agents/shared /app/shared
+RUN mkdir -p /app/agents
+COPY services/agents/shared /app/agents/shared
+RUN touch /app/agents/__init__.py
 
 # Copiar código del ingestor
 COPY services/ingestor/extractors /app/extractors
