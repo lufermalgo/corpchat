@@ -33,7 +33,7 @@ def get_extractor(file_type: str):
     """
     extractors = {
         "pdf": PDFExtractor,
-        "docx": DOCXExtractor",
+        "docx": DOCXExtractor,
         "doc": DOCXExtractor,
         "xlsx": XLSXExtractor,
         "xls": XLSXExtractor,

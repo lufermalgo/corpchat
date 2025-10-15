@@ -1,0 +1,22 @@
+Catálogo de Productos 2025
+==========================
+
+Hoja 1: Laptops
+--------------
+
+| Modelo       | Procesador  | RAM  | Almacenamiento | Precio    |
+|--------------|-------------|------|----------------|-----------|
+| ThinkPad X1  | i7-12th     | 16GB | 512GB SSD      | $1,499    |
+| MacBook Pro  | M3 Pro      | 18GB | 512GB SSD      | $2,299    |
+| Dell XPS 15  | i9-13th     | 32GB | 1TB SSD        | $2,199    |
+| HP Spectre   | i7-12th     | 16GB | 512GB SSD      | $1,699    |
+
+Hoja 2: Monitores
+----------------
+
+| Marca  | Tamaño | Resolución | Tipo   | Precio |
+|--------|--------|------------|--------|--------|
+| Dell   | 27"    | 4K UHD     | IPS    | $599   |
+| LG     | 32"    | 4K UHD     | IPS    | $799   |
+| Samsung| 34"    | UWQHD      | VA     | $899   |
+| ASUS   | 27"    | QHD        | IPS    | $449   |

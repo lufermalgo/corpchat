@@ -1,0 +1,27 @@
+Manual de Usuario - CorpChat
+============================
+
+Capítulo 1: Introducción
+-------------------------
+
+CorpChat es una plataforma conversacional corporativa que permite a los
+empleados interactuar con información empresarial de forma natural.
+
+Características principales:
+- Chat conversacional con IA
+- Procesamiento de documentos
+- Búsqueda semántica
+- Multi-agente especializado
+
+Capítulo 2: Primeros Pasos
+---------------------------
+
+Para comenzar a usar CorpChat:
+
+1. Inicia sesión con tu cuenta corporativa
+2. Crea un nuevo chat
+3. Haz una pregunta o sube un documento
+4. Recibe respuestas inteligentes del sistema
+
+El sistema procesará tus documentos automáticamente y los indexará
+para búsquedas futuras.
