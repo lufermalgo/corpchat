@@ -46,7 +46,7 @@ steps:
       - '--service-account=corpchat-app@${PROJECT_ID}.iam.gserviceaccount.com'
       - '--set-env-vars=VERTEX_PROJECT=${PROJECT_ID},VERTEX_LOCATION=${_REGION},MODEL=gemini-2.5-flash-001'
       - '--labels=team=corpchat,env=${_ENVIRONMENT},service=gateway'
-      - '--allow-unauthenticated=false'
+      - '--no-allow-unauthenticated'
       - '--ingress=internal-and-cloud-load-balancing'
 
 # Timeout para el build completo

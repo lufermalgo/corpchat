@@ -49,7 +49,7 @@ steps:
       - '--service-account=corpchat-app@${PROJECT_ID}.iam.gserviceaccount.com'
       - '--set-env-vars=APP_TITLE=${_APP_TITLE},WEBUI_AUTH_PROVIDER=trusted_header'
       - '--labels=team=corpchat,env=${_ENVIRONMENT},service=ui'
-      - '--allow-unauthenticated=false'
+      - '--no-allow-unauthenticated'
       - '--ingress=all'
 
 # Timeout para el build completo
