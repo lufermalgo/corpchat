@@ -17,10 +17,17 @@ from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 import uvicorn
 
-# Agregar shared al path
-sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
+# Agregar shared al path si es necesario (desarrollo local)
+shared_path = Path(__file__).parent.parent / "shared"
+if shared_path.exists() and str(shared_path) not in sys.path:
+    sys.path.insert(0, str(shared_path))
 
-from firestore_client import FirestoreClient
+# Importar desde shared (funciona con PYTHONPATH=/app en Docker y local con sys.path)
+try:
+    from shared.firestore_client import FirestoreClient
+except ImportError:
+    # Fallback para Docker donde shared está en /app/shared
+    from firestore_client import FirestoreClient
 
 # Importar ADK components
 from google.adk.runners import Runner

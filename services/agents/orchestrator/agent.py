@@ -10,8 +10,10 @@ import sys
 import os
 from pathlib import Path
 
-# Agregar shared al path
-sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
+# Agregar shared al path si es necesario (desarrollo local)
+shared_path = Path(__file__).parent.parent / "shared"
+if shared_path.exists() and str(shared_path) not in sys.path:
+    sys.path.insert(0, str(shared_path))
 
 from google.adk.agents import LlmAgent
 
