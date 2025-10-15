@@ -22,12 +22,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY shared /app/shared
 
 # Copiar código del orquestador
-COPY orchestrator/agent.py orchestrator/main.py /app/
+COPY orchestrator/agent.py orchestrator/main.py orchestrator/__init__.py /app/
 
 # Variables de entorno por defecto
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app:/app/shared
+ENV PYTHONPATH=/app
 
 # Exponer puerto
 EXPOSE 8080
