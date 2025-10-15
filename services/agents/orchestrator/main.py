@@ -27,7 +27,7 @@ from shared.firestore_client import FirestoreClient
 
 # Importar ADK components
 from google.adk.runners import Runner
-from google.adk.sessions import Session
+from google.adk.sessions import Session, SessionService
 
 # Importar factory del agente (no el agente global)
 from agent import create_orchestrator_agent, PROJECT_ID, LOCATION
@@ -148,8 +148,12 @@ async def chat(
             userId=user_id
         )
         
-        # Crear Runner
-        runner = Runner()
+        # Crear SessionService para Runner
+        # SessionService gestiona el almacenamiento y estado de sesiones
+        session_service = SessionService()
+        
+        # Crear Runner con SessionService
+        runner = Runner(session_service=session_service)
         
         # Variables para acumular respuesta
         response_text = ""
