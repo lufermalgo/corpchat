@@ -17,19 +17,19 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements
-COPY requirements.txt ./requirements.txt
+# Copiar requirements del ingestor
+COPY services/ingestor/requirements.txt ./requirements.txt
 
 # Instalar dependencias Python
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copiar shared code desde agents (necesario para BigQuery y Firestore)
-COPY ../agents/shared /app/agents/shared
+# Copiar código compartido (agents/shared)
+COPY services/agents/shared /app/shared
 
 # Copiar código del ingestor
-COPY extractors /app/extractors
-COPY *.py /app/
+COPY services/ingestor/extractors /app/extractors
+COPY services/ingestor/*.py /app/
 
 # Variables de entorno por defecto
 ENV PORT=8080

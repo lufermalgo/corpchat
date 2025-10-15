@@ -1,0 +1,52 @@
+# Cloud Build configuration para Ingestor (versión simplificada)
+steps:
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/corpchat/corpchat-ingestor:latest'
+      - '-f'
+      - 'services/ingestor/Dockerfile'
+      - '.'
+
+  # Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/corpchat/corpchat-ingestor:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'corpchat-ingestor'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/corpchat/corpchat-ingestor:latest'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--min-instances=0'
+      - '--max-instances=10'
+      - '--memory=2Gi'
+      - '--cpu=2'
+      - '--timeout=900s'
+      - '--concurrency=10'
+      - '--service-account=corpchat-app@$PROJECT_ID.iam.gserviceaccount.com'
+      - '--set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1'
+      - '--labels=team=corpchat,env=dev,service=ingestor'
+      - '--no-allow-unauthenticated'
+      - '--ingress=internal-and-cloud-load-balancing'
+
+# Timeout para el build completo
+timeout: '1800s'
+
+# Opciones adicionales
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Imágenes a mantener
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/corpchat/corpchat-ingestor:latest'
+
