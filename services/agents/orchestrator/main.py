@@ -147,20 +147,23 @@ async def chat(
         runner = get_runner()
         
         # Crear o obtener sesión existente
-        # Según patrón oficial: usar runner.session_service
+        # Según patrón oficial: create_session solo toma app_name y user_id
+        # El session_id se genera automáticamente
         try:
             session = await runner.session_service.get_session(
                 app_name="CorpChat",
                 user_id=user_id,
                 session_id=request.chat_id
             )
-        except Exception:
+            _logger.info(f"✅ Sesión existente recuperada: {session.id}")
+        except Exception as e:
+            _logger.info(f"📝 Creando nueva sesión (error al obtener: {e})")
             # Si no existe, crear nueva sesión
             session = await runner.session_service.create_session(
                 app_name="CorpChat",
-                user_id=user_id,
-                session_id=request.chat_id
+                user_id=user_id
             )
+            _logger.info(f"✅ Nueva sesión creada: {session.id}")
         
         # Variables para acumular respuesta
         response_text = ""
