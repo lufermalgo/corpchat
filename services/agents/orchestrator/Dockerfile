@@ -27,7 +27,7 @@ COPY orchestrator/agent.py orchestrator/main.py /app/
 # Variables de entorno por defecto
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app:/app/shared
 
 # Exponer puerto
 EXPOSE 8080
