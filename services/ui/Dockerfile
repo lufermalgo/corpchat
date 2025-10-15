@@ -5,17 +5,11 @@ FROM ghcr.io/open-webui/open-webui:v0.6.32
 LABEL maintainer="CorpChat Team"
 LABEL service="ui"
 
-# Copiar archivos de branding
-COPY branding/ /opt/branding/
-
-# Copiar script de entrypoint personalizado
-COPY scripts/entrypoint-branding.sh /entrypoint-branding.sh
-RUN chmod +x /entrypoint-branding.sh
-
 # Variables de entorno
 ENV APP_TITLE="CorpChat"
 ENV WEBUI_AUTH_PROVIDER="trusted_header"
+ENV WEBUI_NAME="CorpChat"
 
-# Usar nuestro entrypoint personalizado
-ENTRYPOINT ["/entrypoint-branding.sh"]
+# Nota: El branding avanzado se aplicará en una fase posterior
+# Por ahora usamos el entrypoint original de Open WebUI
 
