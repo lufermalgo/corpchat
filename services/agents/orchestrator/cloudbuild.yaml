@@ -46,7 +46,7 @@ steps:
       - '--timeout=300s'
       - '--concurrency=80'
       - '--service-account=corpchat-app@${PROJECT_ID}.iam.gserviceaccount.com'
-      - '--set-env-vars=GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${_REGION},GOOGLE_GENAI_USE_VERTEXAI=True,MODEL=gemini-2.5-flash-001'
+      - '--set-env-vars=GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${_REGION},GOOGLE_GENAI_USE_VERTEXAI=True,MODEL=gemini-2.0-flash'
       - '--labels=team=corpchat,env=${_ENVIRONMENT},service=orchestrator'
       - '--no-allow-unauthenticated'
       - '--ingress=internal-and-cloud-load-balancing'

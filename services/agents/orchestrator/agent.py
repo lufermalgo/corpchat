@@ -22,7 +22,7 @@ _logger = logging.getLogger(__name__)
 # Variables de entorno
 PROJECT_ID = os.getenv("VERTEX_PROJECT", "genai-385616")
 LOCATION = os.getenv("VERTEX_LOCATION", "us-central1")
-MODEL = os.getenv("MODEL", "gemini-2.5-flash-001")
+MODEL = os.getenv("MODEL", "gemini-2.0-flash")
 
 # Instrucción del orquestador
 ORCHESTRATOR_INSTRUCTION = """
