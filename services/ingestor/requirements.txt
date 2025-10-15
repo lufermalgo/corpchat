@@ -1,5 +1,5 @@
 # Ingestor - Pipeline de procesamiento de documentos
-# Python 3.13
+# Python 3.12
 
 # Google Cloud
 google-cloud-storage==2.18.2

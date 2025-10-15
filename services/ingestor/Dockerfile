@@ -1,5 +1,5 @@
 # Dockerfile para Ingestor - Document Processing Pipeline
-FROM python:3.13-slim
+FROM python:3.12-slim
 
 # Metadata
 LABEL maintainer="CorpChat Team"

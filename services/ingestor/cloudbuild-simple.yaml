@@ -1,11 +1,18 @@
-# Cloud Build configuration para Ingestor (versión simplificada)
+# Cloud Build configuration para Ingestor (Manual Deploy)
+substitutions:
+  _SERVICE_NAME: corpchat-ingestor
+  _REGION: us-central1
+  _ENVIRONMENT: dev
+
 steps:
-  # Build Docker image
+  # Build Docker image (desde el root del proyecto)
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
       - '-t'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/corpchat/corpchat-ingestor:latest'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:latest'
       - '-f'
       - 'services/ingestor/Dockerfile'
       - '.'
@@ -14,7 +21,13 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/corpchat/corpchat-ingestor:latest'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+
+  # Push latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:latest'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -22,9 +35,9 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'corpchat-ingestor'
-      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/corpchat/corpchat-ingestor:latest'
-      - '--region=us-central1'
+      - '${_SERVICE_NAME}'
+      - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+      - '--region=${_REGION}'
       - '--platform=managed'
       - '--min-instances=0'
       - '--max-instances=10'
@@ -33,10 +46,10 @@ steps:
       - '--timeout=900s'
       - '--concurrency=10'
       - '--service-account=corpchat-app@$PROJECT_ID.iam.gserviceaccount.com'
-      - '--set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1'
-      - '--labels=team=corpchat,env=dev,service=ingestor'
+      - '--set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=${_REGION}'
+      - '--labels=team=corpchat,env=${_ENVIRONMENT},service=ingestor'
       - '--no-allow-unauthenticated'
-      - '--ingress=internal-and-cloud-load-balancing'
+      - '--ingress=all'
 
 # Timeout para el build completo
 timeout: '1800s'
@@ -48,5 +61,5 @@ options:
 
 # Imágenes a mantener
 images:
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/corpchat/corpchat-ingestor:latest'
-
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:latest'

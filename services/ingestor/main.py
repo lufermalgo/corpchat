@@ -27,7 +27,12 @@ import uvicorn
 from google.cloud import logging as cloud_logging
 
 # Configurar logging
-cloud_logging.Client().setup_logging()
+try:
+    cloud_logging.Client().setup_logging()
+except Exception as e:
+    print(f"Warning: Could not setup cloud logging: {e}")
+
+logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
 # FastAPI app
