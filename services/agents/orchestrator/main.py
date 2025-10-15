@@ -26,8 +26,8 @@ if str(parent_path) not in sys.path:
 from shared.firestore_client import FirestoreClient
 
 # Importar ADK components
-from google.adk.runners import Runner
-from google.adk.sessions import Session, InMemorySessionService
+from google.adk.runners import InMemoryRunner
+from google.genai import types
 
 # Importar factory del agente (no el agente global)
 from agent import create_orchestrator_agent, PROJECT_ID, LOCATION
@@ -45,20 +45,27 @@ app = FastAPI(
 # Cliente Firestore
 firestore_client = FirestoreClient()
 
-# Cache del agente (lazy initialization)
-_orchestrator_agent = None
+# Cache del runner (lazy initialization)
+_runner = None
 
 
-def get_orchestrator():
+def get_runner():
     """
-    Lazy initialization del orquestador.
+    Lazy initialization del InMemoryRunner.
     Se crea bajo demanda para evitar timeout en container startup.
+    
+    Según patrón oficial de ADK:
+    https://github.com/google/adk-python/blob/main/contributing/samples/hello_world/main.py
     """
-    global _orchestrator_agent
-    if _orchestrator_agent is None:
-        _logger.info("🚀 Inicializando orquestador por primera vez...")
-        _orchestrator_agent = create_orchestrator_agent()
-    return _orchestrator_agent
+    global _runner
+    if _runner is None:
+        _logger.info("🚀 Inicializando InMemoryRunner por primera vez...")
+        orchestrator = create_orchestrator_agent()
+        _runner = InMemoryRunner(
+            agent=orchestrator,
+            app_name="CorpChat"
+        )
+    return _runner
 
 
 # Modelos Pydantic
@@ -136,60 +143,54 @@ async def chat(
             f"📨 Chat request: user={user_id}, chat={request.chat_id}, message_length={len(request.message)}"
         )
         
-        # Obtener orquestador (lazy init)
-        orchestrator = get_orchestrator()
+        # Obtener runner (lazy init)
+        runner = get_runner()
         
-        # Crear Session para ADK
-        # Según docs, Session mantiene el estado entre turns
-        # Estructura: id (session ID), appName (nombre de la app), userId
-        session = Session(
-            id=request.chat_id,
-            appName="CorpChat",
-            userId=user_id
-        )
-        
-        # Crear SessionService para Runner
-        # Usando InMemorySessionService para MVP (datos en memoria, no persisten)
-        # Según docs: https://google.github.io/adk-docs/sessions/session/
-        session_service = InMemorySessionService()
-        
-        # Crear Runner con SessionService
-        runner = Runner(session_service=session_service)
+        # Crear o obtener sesión existente
+        # Según patrón oficial: usar runner.session_service
+        try:
+            session = await runner.session_service.get_session(
+                app_name="CorpChat",
+                user_id=user_id,
+                session_id=request.chat_id
+            )
+        except Exception:
+            # Si no existe, crear nueva sesión
+            session = await runner.session_service.create_session(
+                app_name="CorpChat",
+                user_id=user_id,
+                session_id=request.chat_id
+            )
         
         # Variables para acumular respuesta
         response_text = ""
         events_processed = 0
         agent_name = "CorpChat (ADK)"
         
-        # Invocar ADK usando run_async (event loop)
-        # Según docs: run_async retorna async generator de eventos
-        # El agente se pasa en run_async junto con session y message
+        # Convertir mensaje a types.Content según patrón oficial
+        content = types.Content(
+            role='user',
+            parts=[types.Part.from_text(text=request.message)]
+        )
+        
+        # Invocar ADK usando run_async según patrón oficial
+        # Ref: https://github.com/google/adk-python/blob/main/contributing/samples/hello_world/main.py
         try:
             _logger.info(f"🔄 Iniciando ADK event loop...")
             
             async for event in runner.run_async(
-                app_name="CorpChat",
-                agent=orchestrator,
-                session=session,
-                new_message=request.message
+                user_id=user_id,
+                session_id=session.id,
+                new_message=content
             ):
                 events_processed += 1
-                _logger.debug(f"📊 Event {events_processed}: partial={getattr(event, 'partial', False)}, turn_complete={getattr(event, 'turn_complete', False)}")
                 
-                # Procesar evento según tipo
-                if hasattr(event, 'content') and event.content:
-                    # Acumular contenido de texto
-                    if hasattr(event.content, 'text'):
-                        response_text += event.content.text
-                    elif hasattr(event.content, 'parts'):
-                        for part in event.content.parts:
-                            if hasattr(part, 'text'):
-                                response_text += part.text
-                
-                # Si es el evento final del turn, terminar
-                if getattr(event, 'turn_complete', False):
-                    _logger.info(f"✅ Turn complete después de {events_processed} eventos")
-                    break
+                # Procesar evento: acumular texto de las partes
+                if event.content and event.content.parts:
+                    for part in event.content.parts:
+                        if part.text:
+                            response_text += part.text
+                            _logger.debug(f"📊 Event {events_processed} from {event.author}: {part.text[:50]}...")
             
             if not response_text:
                 response_text = "Lo siento, no pude generar una respuesta."

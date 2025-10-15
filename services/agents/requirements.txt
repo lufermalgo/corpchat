@@ -3,6 +3,7 @@
 
 # ADK (Agent Development Kit) - instalarlo primero para que resuelva sus dependencias
 google-adk>=0.2.0
+google-genai  # Para types.Content y types.Part según ejemplos oficiales
 
 # Web framework (para endpoints HTTP de agentes)
 # Usar versiones compatibles con ADK (requiere starlette>=0.46.2)
