@@ -199,6 +199,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Error en test: {e}")
         print("\nNota: Requiere configuración de Vertex AI:")
-        print("  export GOOGLE_CLOUD_PROJECT=genai-385616")
+        print("  export GOOGLE_CLOUD_PROJECT=$PROJECT_ID")
         print("  export GOOGLE_CLOUD_LOCATION=us-central1")
 

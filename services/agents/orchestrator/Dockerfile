@@ -13,16 +13,16 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements del workspace agents (context es services/agents)
-COPY requirements.txt ./requirements.txt
+# Copiar requirements del workspace agents (context es services)
+COPY agents/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copiar shared utilities
-COPY shared /app/shared
+COPY agents/shared /app/shared
 
 # Copiar código del orquestador
-COPY orchestrator/agent.py orchestrator/main.py orchestrator/__init__.py /app/
+COPY agents/orchestrator/agent.py agents/orchestrator/main.py agents/orchestrator/__init__.py /app/
 
 # Variables de entorno por defecto
 ENV PORT=8080

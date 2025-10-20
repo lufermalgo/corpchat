@@ -11,6 +11,7 @@ Orquesta todo el flujo:
 """
 
 import logging
+import os
 from typing import Dict, Optional
 from pathlib import Path
 import tempfile
@@ -49,7 +50,8 @@ class IngestionPipeline:
         attachment_id: str,
         chat_id: str,
         user_id: str,
-        mime_type: Optional[str] = None
+        mime_type: Optional[str] = None,
+        config: Optional[Dict] = None
     ) -> Dict:
         """
         Pipeline completo de procesamiento.
@@ -120,8 +122,12 @@ class IngestionPipeline:
             _logger.info("🧠 Paso 5/6: Generando embeddings...")
             chunks_with_embeddings = self.embedder.generate_for_chunks(chunks)
             
-            # PASO 6: Almacenar en BigQuery
-            _logger.info("💾 Paso 6/6: Almacenando en BigQuery...")
+            # PASO 6: Almacenar archivo original en Cloud Storage
+            _logger.info("📦 Paso 6/7: Almacenando archivo original en Cloud Storage...")
+            self._store_original_file(local_path, attachment_id, chat_id, user_id)
+            
+            # PASO 7: Almacenar chunks en BigQuery
+            _logger.info("💾 Paso 7/7: Almacenando en BigQuery...")
             storage_result = self.storage.store_chunks(
                 chunks=chunks_with_embeddings,
                 attachment_id=attachment_id,
@@ -146,7 +152,9 @@ class IngestionPipeline:
                 "success": True,
                 "chunks_stored": storage_result["chunks_stored"],
                 "extraction_method": extraction_method,
-                "processing_time_s": round(processing_time, 2)
+                "processing_time_s": round(processing_time, 2),
+                "extracted_text": text_content,
+                "chunks": chunks_with_embeddings
             }
             
             _logger.info(
@@ -172,6 +180,39 @@ class IngestionPipeline:
                 "processing_time_s": round(time.time() - start_time, 2)
             }
     
+    def _store_original_file(self, local_path: str, attachment_id: str, chat_id: str, user_id: str) -> str:
+        """
+        Almacena el archivo original en Cloud Storage.
+        
+        Args:
+            local_path: Ruta local del archivo
+            attachment_id: ID del attachment
+            chat_id: ID del chat
+            user_id: ID del usuario
+        
+        Returns:
+            Ruta GCS del archivo almacenado
+        """
+        try:
+            filename = Path(local_path).name
+            gcs_path = f"attachments/{user_id}/{chat_id}/{attachment_id}/{filename}"
+            
+            # Subir a Cloud Storage
+            bucket_name = os.getenv("GCS_BUCKET_ATTACHMENTS")
+            if not bucket_name:
+                raise ValueError("GCS_BUCKET_ATTACHMENTS environment variable is required")
+            bucket = self.gcs_client.bucket(bucket_name)
+            blob = bucket.blob(gcs_path)
+            
+            blob.upload_from_filename(local_path)
+            _logger.info(f"📦 Archivo original almacenado: gs://{bucket.name}/{gcs_path}")
+            
+            return f"gs://{bucket.name}/{gcs_path}"
+            
+        except Exception as e:
+            _logger.error(f"❌ Error almacenando archivo original: {e}", exc_info=True)
+            raise
+    
     def _download_from_gcs(self, gcs_path: str) -> str:
         """
         Descarga archivo de GCS a disco local temporal.
@@ -182,9 +223,14 @@ class IngestionPipeline:
         Returns:
             Ruta local del archivo descargado
         """
-        # Parse GCS path
+        # Si ya es un path local, retornarlo directamente
         if not gcs_path.startswith("gs://"):
-            raise ValueError(f"Path inválido: {gcs_path}")
+            if os.path.exists(gcs_path):
+                return gcs_path
+            else:
+                raise ValueError(f"Path local no encontrado: {gcs_path}")
+        
+        # Parse GCS path
         
         path_parts = gcs_path.replace("gs://", "").split("/", 1)
         bucket_name = path_parts[0]
@@ -256,8 +302,9 @@ if __name__ == "__main__":
         pipeline = IngestionPipeline()
         
         # Test con archivo de ejemplo (ajustar path)
+        bucket_name = os.getenv("GCS_BUCKET_ATTACHMENTS", "test-bucket")
         result = await pipeline.process_file(
-            gcs_path="gs://corpchat-genai-385616-attachments/test.pdf",
+            gcs_path=f"gs://{bucket_name}/test.pdf",
             attachment_id="test_001",
             chat_id="chat_001",
             user_id="user_001",

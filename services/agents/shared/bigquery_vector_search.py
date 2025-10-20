@@ -7,7 +7,10 @@ Los embeddings se almacenan en BigQuery para búsquedas escalables y cost-effect
 Uso:
     from shared.bigquery_vector_search import BigQueryVectorSearch
     
-    bq_search = BigQueryVectorSearch(project_id="genai-385616")
+    project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+    if not project_id:
+        raise ValueError("GOOGLE_CLOUD_PROJECT environment variable is required")
+    bq_search = BigQueryVectorSearch(project_id=project_id)
     results = bq_search.search_similar_chunks(
         query_embedding=query_vector,
         chat_id="chat_abc123",
@@ -19,6 +22,7 @@ from google.cloud import bigquery
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import logging
+import os
 
 _logger = logging.getLogger(__name__)
 
@@ -32,7 +36,7 @@ class BigQueryVectorSearch:
     
     def __init__(
         self, 
-        project_id: str = "genai-385616",
+        project_id: str = None,
         dataset: str = "corpchat",
         table: str = "embeddings"
     ):
@@ -44,6 +48,11 @@ class BigQueryVectorSearch:
             dataset: Nombre del dataset BigQuery
             table: Nombre de la tabla de embeddings
         """
+        if not project_id:
+            project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+            if not project_id:
+                raise ValueError("GOOGLE_CLOUD_PROJECT environment variable is required")
+        
         self.client = bigquery.Client(project=project_id)
         self.project_id = project_id
         self.dataset = dataset

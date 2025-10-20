@@ -1,0 +1,78 @@
+# Cloud Build configuration simplificada para Gateway (manual builds)
+substitutions:
+  _SERVICE_NAME: corpchat-gateway
+  _REGION: us-central1
+  _ENVIRONMENT: dev
+  # BUILD_ID es una variable built-in de Cloud Build
+
+steps:
+  # Build Docker image (desde el root del proyecto)
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:latest'
+      - '-f'
+      - 'services/gateway/Dockerfile'
+      - '.'
+
+  # Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+
+  # Push latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--min-instances=0'
+      - '--max-instances=5'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--timeout=60s'
+      - '--concurrency=80'
+      - '--service-account=corpchat-app@$PROJECT_ID.iam.gserviceaccount.com'
+      - '--set-env-vars=VERTEX_PROJECT=$PROJECT_ID,VERTEX_LOCATION=${_REGION},MODEL=gemini-2.5-flash-001,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=${_REGION},FIRESTORE_COLLECTION_PREFIX=corpchat,INGESTOR_SERVICE_URL=https://corpchat-ingestor-2s63drefva-uc.a.run.app,SERVICE_NAME=corpchat-gateway'
+      - '--labels=team=corpchat,env=${_ENVIRONMENT},service=gateway'
+      - '--no-allow-unauthenticated' # Requiere autenticación para acceder
+      - '--ingress=all' # Permite acceso desde internet (con autenticación)
+
+  # Configurar acceso público
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'services'
+      - 'add-iam-policy-binding'
+      - '${_SERVICE_NAME}'
+      - '--member=allUsers'
+      - '--role=roles/run.invoker'
+      - '--region=${_REGION}'
+
+# Timeout para el build completo
+timeout: '1200s'
+
+# Opciones adicionales
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Imágenes a mantener
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:latest'

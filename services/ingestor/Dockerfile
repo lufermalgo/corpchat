@@ -18,35 +18,44 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     gcc \
     g++ \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements del ingestor
-COPY services/ingestor/requirements.txt ./requirements.txt
+COPY ingestor/requirements.txt ./requirements.txt
 
 # Instalar dependencias Python
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copiar código compartido (agents/shared)
-RUN mkdir -p /app/agents
-COPY services/agents/shared /app/agents/shared
+COPY agents/shared /app/agents/shared
 RUN touch /app/agents/__init__.py
 
 # Copiar código del ingestor
-COPY services/ingestor/extractors /app/extractors
-COPY services/ingestor/*.py /app/
+COPY ingestor/extractors /app/extractors
+COPY ingestor/*.py /app/
+
+# Crear directorio para credenciales (se montará como volumen)
+RUN mkdir -p /app/credentials
 
 # Variables de entorno por defecto
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
+ENV ENVIRONMENT=production
+
+# Variables de entorno para desarrollo local
+ENV GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account-local.json
+ENV GOOGLE_CLOUD_PROJECT=genai-385616
+ENV GOOGLE_CLOUD_LOCATION=us-central1
 
 # Exponer puerto
 EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8080/health')"
+    CMD curl -f http://localhost:8080/health || exit 1
 
 # Comando de inicio
 CMD exec uvicorn main:app --host 0.0.0.0 --port ${PORT} --workers 2

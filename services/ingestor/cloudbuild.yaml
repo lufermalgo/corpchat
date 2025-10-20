@@ -42,7 +42,7 @@ steps:
       - '--min-instances=0'
       - '--max-instances=10'
       - '--memory=2Gi'
-      - '--cpu=2'
+      - '--cpu=1'
       - '--timeout=900s'
       - '--concurrency=10'
       - '--service-account=corpchat-app@$PROJECT_ID.iam.gserviceaccount.com'

@@ -244,6 +244,18 @@ class DOCXExtractor:
             for s in full_extraction["sections"]
             if s["type"] == "heading"
         ]
+    
+    def extract_all_text(self, docx_path: str) -> str:
+        """
+        Extrae todo el texto del documento (compatible con XLSXExtractor).
+        
+        Args:
+            docx_path: Ruta del DOCX
+        
+        Returns:
+            Texto completo del documento
+        """
+        return self.extract_text(docx_path)
 
 
 if __name__ == "__main__":

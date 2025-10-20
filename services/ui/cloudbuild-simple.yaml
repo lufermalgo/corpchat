@@ -1,0 +1,66 @@
+# Cloud Build configuration simplificada para UI (manual builds)
+substitutions:
+  _SERVICE_NAME: corpchat-ui
+  _REGION: us-central1
+  _ENVIRONMENT: dev
+  # BUILD_ID es una variable built-in de Cloud Build
+
+steps:
+  # Build Docker image (desde el root del proyecto)
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:latest'
+      - '-f'
+      - 'services/ui/Dockerfile'
+      - '.'
+
+  # Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+
+  # Push latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--min-instances=0'
+      - '--max-instances=5'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--timeout=300s'
+      - '--concurrency=80'
+      - '--service-account=corpchat-app@$PROJECT_ID.iam.gserviceaccount.com'
+      - '--env-vars-file=services/ui/env-vars.yaml'
+      - '--labels=team=corpchat,env=${_ENVIRONMENT},service=ui'
+      - '--no-allow-unauthenticated' # Requiere autenticación para acceder
+      - '--ingress=all' # Permite acceso desde internet (con autenticación)
+
+# Timeout para el build completo
+timeout: '1800s'
+
+# Opciones adicionales
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Imágenes a mantener
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:$BUILD_ID'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/corpchat/${_SERVICE_NAME}:latest'

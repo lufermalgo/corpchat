@@ -43,41 +43,13 @@ class ModelConfig:
         self.supports_code = supports_code
 
 
-# Modelos REALES de Gemini disponibles en Vertex AI
+# Modelos REALES de Gemini disponibles en Vertex AI (modelos específicos del proyecto)
 AVAILABLE_MODELS = {
-    # Gemini 2.5 Flash - Modelo rápido y eficiente
-    "gemini-2.5-flash": ModelConfig(
-        gemini_model="gemini-2.5-flash-001",
-        display_name="Gemini 2.5 Flash",
-        description="Modelo rápido y eficiente para conversaciones generales",
-        capability=ModelCapability.FAST,
-        temperature=0.7,
-        max_tokens=8192,
-        cost_per_1k_tokens=0.075,
-        supports_thinking=False,
-        supports_images=False,
-        supports_code=True
-    ),
-    
-    # Gemini 2.5 Flash Thinking - Con capacidad de razonamiento
-    "gemini-2.5-flash-thinking": ModelConfig(
-        gemini_model="gemini-2.5-flash-001",
-        display_name="Gemini 2.5 Flash (Thinking)",
-        description="Modelo rápido con capacidad de razonamiento profundo",
-        capability=ModelCapability.THINKING,
-        temperature=0.7,
-        max_tokens=8192,
-        cost_per_1k_tokens=0.075,
-        supports_thinking=True,
-        supports_images=False,
-        supports_code=True
-    ),
-    
-    # Gemini 2.0 Flash - Modelo general equilibrado
-    "gemini-2.0-flash": ModelConfig(
-        gemini_model="gemini-2.0-flash-exp",
-        display_name="Gemini 2.0 Flash",
-        description="Modelo equilibrado para tareas generales y análisis",
+    # AUTO - Detecta automáticamente la intención del usuario
+    "gemini-auto": ModelConfig(
+        gemini_model="gemini-2.5-flash-lite",
+        display_name="Gemini Auto",
+        description="Selecciona automáticamente el mejor modelo según tu consulta",
         capability=ModelCapability.GENERAL,
         temperature=0.7,
         max_tokens=8192,
@@ -87,44 +59,72 @@ AVAILABLE_MODELS = {
         supports_code=True
     ),
     
-    # Gemini 1.5 Pro - Modelo avanzado para análisis complejos
-    "gemini-1.5-pro": ModelConfig(
-        gemini_model="gemini-1.5-pro-001",
-        display_name="Gemini 1.5 Pro",
-        description="Modelo avanzado para análisis complejos y razonamiento profundo",
-        capability=ModelCapability.ANALYSIS,
+    # THINKING - Para razonamiento profundo y análisis complejos
+    "gemini-thinking": ModelConfig(
+        gemini_model="gemini-2.5-flash",
+        display_name="Gemini Thinking",
+        description="Modelo especializado en razonamiento profundo y análisis complejos",
+        capability=ModelCapability.THINKING,
         temperature=0.1,
         max_tokens=8192,
-        cost_per_1k_tokens=0.00125,  # Más caro
+        cost_per_1k_tokens=0.075,
         supports_thinking=True,
         supports_images=True,
         supports_code=True
     ),
     
-    # Gemini 1.5 Flash - Modelo rápido para desarrollo
-    "gemini-1.5-flash": ModelConfig(
-        gemini_model="gemini-1.5-flash-001",
-        display_name="Gemini 1.5 Flash",
-        description="Modelo rápido optimizado para desarrollo y codificación",
+    # CODING - Para desarrollo y programación
+    "gemini-coding": ModelConfig(
+        gemini_model="gemini-2.5-pro",
+        display_name="Gemini Coding",
+        description="Modelo especializado en desarrollo, programación y debugging",
         capability=ModelCapability.CODING,
         temperature=0.3,
         max_tokens=8192,
         cost_per_1k_tokens=0.075,
         supports_thinking=False,
-        supports_images=False,
+        supports_images=True,
         supports_code=True
     ),
     
-    # Gemini 1.5 Pro con imágenes - Para generación de contenido visual
-    "gemini-1.5-pro-vision": ModelConfig(
-        gemini_model="gemini-1.5-pro-001",
-        display_name="Gemini 1.5 Pro (Vision)",
-        description="Modelo avanzado con capacidades de análisis de imágenes y generación visual",
+    # ANALYSIS - Para análisis de datos y documentos
+    "gemini-analysis": ModelConfig(
+        gemini_model="gemini-2.5-pro",
+        display_name="Gemini Analysis",
+        description="Modelo especializado en análisis de datos, documentos y reportes",
+        capability=ModelCapability.ANALYSIS,
+        temperature=0.2,
+        max_tokens=8192,
+        cost_per_1k_tokens=0.075,
+        supports_thinking=True,
+        supports_images=True,
+        supports_code=True
+    ),
+    
+    # FAST - Para respuestas rápidas y conversación casual
+    "gemini-fast": ModelConfig(
+        gemini_model="gemini-2.5-flash-lite",
+        display_name="Gemini Fast",
+        description="Modelo rápido para conversación casual y respuestas inmediatas",
+        capability=ModelCapability.FAST,
+        temperature=0.7,
+        max_tokens=2048,
+        cost_per_1k_tokens=0.075,
+        supports_thinking=False,
+        supports_images=True,
+        supports_code=True
+    ),
+    
+    # VISION - Para análisis de imágenes
+    "gemini-vision": ModelConfig(
+        gemini_model="gemini-2.5-flash-image",
+        display_name="Gemini Vision",
+        description="Modelo especializado en análisis y generación de imágenes",
         capability=ModelCapability.IMAGE_GENERATION,
         temperature=0.7,
         max_tokens=8192,
-        cost_per_1k_tokens=0.00125,
-        supports_thinking=True,
+        cost_per_1k_tokens=0.075,
+        supports_thinking=False,
         supports_images=True,
         supports_code=False
     )
@@ -141,7 +141,7 @@ def get_model_config(model_name: str) -> ModelConfig:
     Returns:
         Configuración del modelo o modelo por defecto
     """
-    return AVAILABLE_MODELS.get(model_name, AVAILABLE_MODELS["gemini-2.5-flash"])
+    return AVAILABLE_MODELS.get(model_name, AVAILABLE_MODELS["gemini-auto"])
 
 
 def get_available_models() -> Dict[str, Dict]:
@@ -208,9 +208,71 @@ def apply_model_config(model_config: ModelConfig, request_data: Dict) -> Dict:
     return modified_request
 
 
+def detect_user_intent(user_message: str) -> str:
+    """
+    Detecta automáticamente la intención del usuario basado en el mensaje.
+    Retorna el nombre del modelo específico a usar.
+    
+    Args:
+        user_message: Mensaje del usuario
+        
+    Returns:
+        Nombre del modelo específico a usar
+    """
+    message_lower = user_message.lower()
+    
+    # Palabras clave para cada capacidad
+    coding_keywords = [
+        'código', 'code', 'programar', 'programming', 'función', 'function', 
+        'variable', 'debug', 'error', 'syntax', 'api', 'sql', 'python', 
+        'javascript', 'java', 'desarrollar', 'desarrollo', 'implementar',
+        'clase', 'class', 'método', 'method', 'algoritmo', 'algorithm'
+    ]
+    
+    analysis_keywords = [
+        'analizar', 'analysis', 'análisis', 'reporte', 'report', 'datos', 
+        'data', 'estadística', 'statistics', 'métricas', 'metrics', 'tendencias',
+        'comparar', 'compare', 'evaluar', 'evaluate', 'investigar', 'investigate',
+        'dashboard', 'kpi', 'performance', 'rendimiento', 'resultado', 'result'
+    ]
+    
+    thinking_keywords = [
+        'explicar', 'explain', 'por qué', 'why', 'cómo funciona', 'how does',
+        'razonamiento', 'reasoning', 'lógica', 'logic', 'proceso', 'process',
+        'estrategia', 'strategy', 'plan', 'diseño', 'design', 'arquitectura',
+        'complejo', 'complex', 'difícil', 'difficult', 'problema', 'problem'
+    ]
+    
+    vision_keywords = [
+        'imagen', 'image', 'foto', 'photo', 'dibujo', 'drawing', 'visual',
+        'gráfico', 'chart', 'diagrama', 'diagram', 'esquema', 'schema'
+    ]
+    
+    # Detectar intención y retornar modelo específico
+    if any(keyword in message_lower for keyword in coding_keywords):
+        return "gemini-coding"  # Usar gemini-2.5-pro
+    
+    if any(keyword in message_lower for keyword in analysis_keywords):
+        return "gemini-analysis"  # Usar gemini-2.5-pro
+    
+    if any(keyword in message_lower for keyword in thinking_keywords):
+        return "gemini-thinking"  # Usar gemini-2.5-flash
+    
+    if any(keyword in message_lower for keyword in vision_keywords):
+        return "gemini-vision"  # Usar gemini-2.5-flash-image
+    
+    # Si es una pregunta simple o corta, usar FAST
+    if len(user_message.split()) <= 10 and '?' in user_message:
+        return "gemini-fast"  # Usar gemini-2.5-flash-lite
+    
+    # Por defecto, usar GENERAL (gemini-2.5-flash-lite)
+    return "gemini-auto"
+
+
 def get_capability_prompt(model_config: ModelConfig, user_message: str) -> str:
     """
     Genera prompt adicional basado en las capacidades del modelo Gemini.
+    Si es modelo AUTO, detecta automáticamente la intención.
     
     Args:
         model_config: Configuración del modelo Gemini
@@ -219,6 +281,44 @@ def get_capability_prompt(model_config: ModelConfig, user_message: str) -> str:
     Returns:
         Prompt modificado con instrucciones específicas de capacidad
     """
+    # Si es modelo AUTO, detectar intención automáticamente
+    if model_config.capability == ModelCapability.GENERAL and "auto" in model_config.display_name.lower():
+        detected_model = detect_user_intent(user_message)
+        
+        # Obtener la configuración del modelo detectado
+        detected_config = AVAILABLE_MODELS.get(detected_model, model_config)
+        
+        capability_instructions = {
+            ModelCapability.FAST: "",  # Sin modificaciones para respuestas rápidas
+            
+            ModelCapability.THINKING: (
+                "\n\n[INSTRUCCIÓN]: Usa tu capacidad de razonamiento para analizar esta consulta. "
+                "Piensa paso a paso y proporciona una respuesta bien fundamentada."
+            ),
+            
+            ModelCapability.CODING: (
+                "\n\n[INSTRUCCIÓN]: Eres un experto en programación. Si la consulta involucra código, "
+                "proporciona ejemplos prácticos y mejores prácticas. Si no es sobre programación, "
+                "responde normalmente."
+            ),
+            
+            ModelCapability.ANALYSIS: (
+                "\n\n[INSTRUCCIÓN]: Realiza un análisis profundo y detallado. Considera múltiples "
+                "perspectivas, proporciona evidencia y ejemplos concretos cuando sea apropiado."
+            ),
+            
+            ModelCapability.IMAGE_GENERATION: (
+                "\n\n[INSTRUCCIÓN]: Si la consulta involucra imágenes, análisis visual o generación "
+                "de contenido visual, proporciona una respuesta detallada. Si no, responde normalmente."
+            ),
+            
+            ModelCapability.GENERAL: ""  # Sin modificaciones para uso general
+        }
+        
+        instruction = capability_instructions.get(detected_config.capability, "")
+        return user_message + instruction
+    
+    # Para modelos específicos, usar su capacidad predefinida
     capability_instructions = {
         ModelCapability.FAST: "",  # Sin modificaciones para respuestas rápidas
         

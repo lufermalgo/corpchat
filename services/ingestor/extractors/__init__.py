@@ -12,12 +12,14 @@ from .pdf_extractor import PDFExtractor
 from .docx_extractor import DOCXExtractor
 from .xlsx_extractor import XLSXExtractor
 from .image_extractor import ImageExtractor
+from .text_extractor import TextExtractor
 
 __all__ = [
     "PDFExtractor",
     "DOCXExtractor",
     "XLSXExtractor",
-    "ImageExtractor"
+    "ImageExtractor",
+    "TextExtractor"
 ]
 
 # Factory para obtener extractor apropiado
@@ -37,7 +39,9 @@ def get_extractor(file_type: str):
         "doc": DOCXExtractor,
         "xlsx": XLSXExtractor,
         "xls": XLSXExtractor,
-        "image": ImageExtractor
+        "image": ImageExtractor,
+        "text": TextExtractor,
+        "csv": TextExtractor
     }
     
     extractor_class = extractors.get(file_type.lower())

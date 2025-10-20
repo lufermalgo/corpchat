@@ -42,7 +42,7 @@ steps:
       - '--min-instances=0'
       - '--max-instances=10'
       - '--memory=2Gi'
-      - '--cpu=2'
+      - '--cpu=1'
       - '--timeout=900s'
       - '--concurrency=10'
       - '--service-account=corpchat-app@$PROJECT_ID.iam.gserviceaccount.com'
@@ -50,6 +50,18 @@ steps:
       - '--labels=team=corpchat,env=${_ENVIRONMENT},service=ingestor'
       - '--no-allow-unauthenticated'
       - '--ingress=all'
+
+  # Configurar acceso público
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'services'
+      - 'add-iam-policy-binding'
+      - '${_SERVICE_NAME}'
+      - '--member=allUsers'
+      - '--role=roles/run.invoker'
+      - '--region=${_REGION}'
 
 # Timeout para el build completo
 timeout: '1800s'

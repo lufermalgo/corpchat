@@ -1,0 +1,1 @@
+Este es un documento de prueba para validar el pipeline de CorpChat.

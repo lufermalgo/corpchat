@@ -61,3 +61,36 @@ infra/**/*.tfvars
 
 client_secret_*.json
 .env
+
+# ==========================================
+# LOCAL DEVELOPMENT
+# ==========================================
+# Credenciales y configuración local
+credentials/
+*.json
+service-account-*.json
+activate_env.sh
+
+# Docker local
+docker-compose.override.yml
+.docker/
+
+# Desarrollo local
+.env.local
+.env.development
+.env.test
+
+# Logs locales
+logs/
+*.log
+local-*.log
+
+# Datos locales
+data/
+uploads/
+temp/
+tmp/
+
+# IDE específico
+.vscode/settings.json
+.vscode/launch.json

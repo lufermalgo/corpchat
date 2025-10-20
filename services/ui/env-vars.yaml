@@ -1,0 +1,191 @@
+# Variables de entorno para Open WebUI - Configuración completa
+APP_TITLE: "CorpChat"
+WEBUI_NAME: "CorpChat"
+
+# Configuración de branding corporativo
+WEBUI_FAVICON_URL: "https://openwebui.com/favicon.png"
+WEBUI_BANNERS: "[]"
+
+# Configuración OAuth Google
+ENABLE_OAUTH_SIGNUP: "true"
+GOOGLE_CLIENT_ID: "36072227238-u72uom2ciaktets6q1rldcc2msv4m7io.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET: "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"
+OAUTH_MERGE_ACCOUNTS_BY_EMAIL: "true"
+
+# Configuración de roles
+DEFAULT_USER_ROLE: "user"
+
+# ==========================================
+# CONFIGURACIONES MANUALES A CAPTURAR:
+# ==========================================
+# Estas se agregarán según las configuraciones que hagas manualmente en la interfaz
+
+# Configuraciones PersistentConfig que se pueden hacer manualmente:
+ENABLE_SIGNUP: "false"
+ENABLE_LOGIN_FORM: "false" 
+
+# ==========================================
+# CONFIGURACIONES MANUALES CAPTURADAS:
+# ==========================================
+# Configuraciones extraídas de la interfaz de administración
+
+# Configuración de API OpenAI (Gateway) - URLs para local y producción
+# LOCAL: http://corpchat-gateway:8080/v1
+# PRODUCCIÓN: https://corpchat-gateway-2s63drefva-uc.a.run.app
+OPENAI_API_BASE_URL: "http://corpchat-gateway:8080/v1"
+OPENAI_API_KEY: "corpchat-gateway"
+
+# Configuración de modelos disponibles - SOLO GEMINI
+OPENAI_API_MODELS: "gemini-auto,gemini-thinking,gemini-coding,gemini-analysis,gemini-fast,gemini-vision"
+
+# Configuración para pasar información del usuario al backend
+# Esto permite que el Gateway identifique al usuario autenticado
+ENABLE_USER_ID_HEADER: "true"
+USER_ID_HEADER_NAME: "X-User-ID"
+
+# Configuración de permisos para modelos
+USER_PERMISSIONS_CHAT_MULTIPLE_MODELS: "true"
+
+# Configuración de permisos de características (verificadas con documentación Open WebUI)
+ENABLE_WEB_SEARCH: "true"
+ENABLE_IMAGE_GENERATION: "true"
+ENABLE_CODE_INTERPRETER: "true"
+ENABLE_NOTES: "false"
+USER_PERMISSIONS_FEATURES_NOTES: "false"
+ENABLE_EVALUATION_ARENA_MODELS: "false"
+ENABLE_FOLLOW_UP_GENERATION: "false"
+DEFAULT_PROMPT_SUGGESTIONS: "[]"
+USER_PERMISSIONS_CHAT_CONTROLS: "false"
+USER_PERMISSIONS_CHAT_TEMPORARY: "false"
+USER_PERMISSIONS_CHAT_TEMPORARY_ENFORCED: "false"
+BYPASS_MODEL_ACCESS_CONTROL: "true"
+USER_PERMISSIONS_WORKSPACE_MODELS_ACCESS: "true"
+USER_PERMISSIONS_CHAT_CALL: "false"
+
+# Configuración de Text-to-Speech (TTS)
+AUDIO_TTS_ENGINE: ""
+
+# Timeouts para conexión con Gateway
+AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST: "30"
+AIOHTTP_CLIENT_TIMEOUT_OPENAI_MODEL_LIST: "30"
+
+# Deshabilitar Ollama completamente
+ENABLE_OLLAMA_API: "false"
+OLLAMA_BASE_URL: ""
+
+# ==========================================
+# CONFIGURACIONES MANUALES IDENTIFICADAS:
+# ==========================================
+# Estas configuraciones se han hecho manualmente en la interfaz de administración
+# y necesitan ser automatizadas para replicabilidad multi-cliente
+
+# CONFIGURACIÓN DE DOCUMENTOS (External Document Loader)
+# Configurado manualmente en Admin Panel > Settings > Documents
+# LOCAL: http://corpchat-ingestor:8080/extract
+# PRODUCCIÓN: https://corpchat-ingestor-2s63drefva-uc.a.run.app/extract
+EXTERNAL_DOCUMENT_LOADER_URL: "http://corpchat-ingestor:8080/extract"
+EXTERNAL_DOCUMENT_LOADER_API_KEY: "corpchat-local"
+CONTENT_EXTRACTION_ENGINE: "external"
+
+# CONFIGURACIÓN DE CONEXIÓN AL GATEWAY
+# Configurado manualmente en Admin Panel > Settings > Connections
+# URL: https://corpchat-gateway-2s63drefva-uc.a.run.app
+# Auth: Bearer corpchat-gateway
+# Provider Type: OpenAI
+# (Ya automatizado arriba, pero documentado para referencia)
+
+# CONFIGURACIONES DE DOCUMENTOS ADICIONALES
+# Configurado manualmente en Admin Panel > Settings > Documents
+# Bypass Embedding and Retrieval: Activado
+# Allowed File Extensions: Formatos soportados por CorpChat Pipeline
+# Max Upload Size: (configurado manualmente)
+BYPASS_EMBEDDING_AND_RETRIEVAL: "true"
+RAG_ALLOWED_FILE_EXTENSIONS: "pdf,docx,doc,xlsx,xls"
+# MAX_UPLOAD_SIZE: "100MB"  # Ejemplo
+
+# CONFIGURACIONES DE STREAMING
+# Configurado manualmente en Admin Panel > Settings > Interface
+# (Probablemente configurado para streaming en tiempo real)
+CHAT_RESPONSE_STREAM_DELTA_CHUNK_SIZE: "16"
+
+# CONFIGURACIONES DE RAG
+# Configurado manualmente en Admin Panel > Settings > Documents
+# LOCAL: http://corpchat-gateway:8080
+# PRODUCCIÓN: https://corpchat-gateway-2s63drefva-uc.a.run.app
+RAG_OPENAI_API_BASE_URL: "http://corpchat-gateway:8080"
+RAG_OPENAI_API_KEY: "corpchat-gateway"
+
+# CONFIGURACIONES DE INTERFAZ PERSONALIZADA
+# Configurado manualmente en Admin Panel > Settings > Interface
+# (Probablemente configurado para branding corporativo)
+ENABLE_FOLLOW_UP_GENERATION: "false"
+
+# CONFIGURACIÓN DE MODELO POR DEFECTO
+# Configurado manualmente en Admin Panel > Settings > Interface
+# Define el modelo que se selecciona automáticamente al iniciar un chat
+DEFAULT_MODELS: "gemini-2.5-flash-001"
+
+# CONFIGURACIÓN DE STREAMING
+# Habilitar streaming para respuestas en tiempo real
+ENABLE_STREAMING: "true"
+ENABLE_MESSAGE_RATING: "false"
+
+# CONFIGURACIÓN DE SPEECH-TO-TEXT (STT)
+# Configurar STT para usar Google Cloud Speech-to-Text via Gateway
+# LOCAL: http://corpchat-gateway:8080/v1/audio
+# PRODUCCIÓN: https://corpchat-gateway-2s63drefva-uc.a.run.app/v1/audio
+AUDIO_STT_ENGINE: "openai"
+AUDIO_STT_MODEL: "whisper-1"
+AUDIO_STT_OPENAI_API_BASE_URL: "http://corpchat-gateway:8080/v1/audio"
+AUDIO_STT_OPENAI_API_KEY: "corpchat-gateway"
+
+# ==========================================
+# FORMATOS DE DOCUMENTOS SOPORTADOS:
+# ==========================================
+# ACTUALMENTE IMPLEMENTADOS:
+# ✅ PDF (.pdf) - Extracción de texto y tablas
+# ✅ Word (.docx, .doc) - Documentos con formato
+# ✅ Excel (.xlsx, .xls) - Hojas de cálculo
+# ✅ Imágenes (.jpg, .jpeg, .png, .gif, .bmp, .tiff) - OCR
+
+# FORMATOS FALTANTES PARA IMPLEMENTAR:
+# ❌ PowerPoint (.pptx, .ppt) - Presentaciones
+# ❌ Texto plano (.txt, .md) - Archivos de texto
+# ❌ CSV (.csv) - Datos tabulares
+# ❌ RTF (.rtf) - Rich Text Format
+# ❌ ODT (.odt) - OpenDocument Text
+
+# ==========================================
+# SPEECH-TO-TEXT (STT) CONFIGURATION:
+# ==========================================
+# Configuración para usar nuestro Gateway con Google Cloud Speech-to-Text
+# Usar endpoint público /stt/transcribe (sin autenticación)
+# LOCAL: http://corpchat-gateway:8080/v1/audio
+# PRODUCCIÓN: https://corpchat-gateway-2s63drefva-uc.a.run.app/v1/audio
+AUDIO_STT_ENGINE: "openai"
+AUDIO_STT_MODEL: "whisper-1"
+AUDIO_STT_OPENAI_API_BASE_URL: "http://corpchat-gateway:8080/v1/audio"
+AUDIO_STT_OPENAI_API_KEY: "corpchat-gateway"
+
+# ==========================================
+# CONFIGURACIÓN DE ACUMULACIÓN DE TEXTO:
+# ==========================================
+# Para que las transcripciones se acumulen en lugar de reemplazarse
+AUDIO_STT_APPEND_MODE: "true"
+AUDIO_STT_CONTINUOUS_MODE: "true"
+
+# ==========================================
+# CONFIGURACIÓN PERSISTENTE:
+# ==========================================
+# Deshabilitar configuración persistente para que las variables de entorno se apliquen
+ENABLE_PERSISTENT_CONFIG: "false"
+
+# ==========================================
+# VARIABLES PARA PARAMETRIZACIÓN MULTI-CLIENTE:
+# ==========================================
+# Estas variables deben ser parametrizables por cliente
+# CLIENT_ID: "cliente1"
+# CLIENT_GATEWAY_URL: "https://corpchat-gateway-cliente1.run.app"
+# CLIENT_GATEWAY_KEY: "corpchat-gateway-cliente1"
+# CLIENT_INGESTOR_URL: "https://corpchat-ingestor-cliente1.run.app"
+# CLIENT_INGESTOR_KEY: "corpchat-ingestor-cliente1"
