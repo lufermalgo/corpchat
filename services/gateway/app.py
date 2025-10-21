@@ -318,6 +318,45 @@ app = FastAPI(
 )
 
 
+@app.middleware("http")
+async def enrich_chat_request(request: Request, call_next):
+    """
+    Enriquece requests de chat con información de attachments.
+    
+    Si Open WebUI no envía chat_id en el request, intenta obtenerlo de headers
+    para habilitar el procesamiento de imágenes desde GCS.
+    """
+    if request.url.path == "/v1/chat/completions":
+        try:
+            # Leer body del request
+            body = await request.body()
+            if body:
+                import json
+                json_body = json.loads(body)
+                
+                # Si no hay chat_id pero hay header de Open WebUI, usar ese
+                if not json_body.get("chat_id"):
+                    chat_id_header = request.headers.get("X-Chat-ID")
+                    if chat_id_header:
+                        json_body["chat_id"] = chat_id_header
+                        _logger.info(f"Enriquecido request con chat_id: {chat_id_header}")
+                
+                # Recrear request con body modificado
+                new_body = json.dumps(json_body).encode()
+                
+                # Crear nuevo request con el body modificado
+                async def receive():
+                    return {"type": "http.request", "body": new_body}
+                
+                request._receive = receive
+                
+        except Exception as e:
+            _logger.warning(f"Error enriqueciendo request: {e}")
+    
+    response = await call_next(request)
+    return response
+
+
 # Modelos Pydantic para requests/responses
 class Message(BaseModel):
     """Mensaje en formato OpenAI."""
@@ -334,6 +373,7 @@ class ChatCompletionRequest(BaseModel):
     stream: Optional[bool] = Field(default=False)
     user: Optional[str] = None
     session_id: Optional[str] = Field(default=None, description="ID de sesión para mantener contexto de conversación")
+    chat_id: Optional[str] = Field(default=None, description="ID del chat para recuperar attachments")
 
 
 class Usage(BaseModel):
@@ -401,13 +441,14 @@ def extract_user_from_header(x_goog_authenticated_user_email: Optional[str] = No
     return x_goog_authenticated_user_email
 
 
-def convert_messages_to_gemini(messages: List[Message]) -> List[Content]:
+def convert_messages_to_gemini(messages: List[Message], chat_id: Optional[str] = None) -> List[Content]:
     """
     Convierte mensajes de formato OpenAI a formato Gemini.
     Soporta contenido multimodal (texto + imágenes) para TODOS los modelos Gemini.
     
     Args:
         messages: Lista de mensajes en formato OpenAI
+        chat_id: ID del chat (opcional, para recuperar attachments)
     
     Returns:
         Lista de Content objects para Gemini
@@ -454,13 +495,44 @@ def convert_messages_to_gemini(messages: List[Message]) -> List[Content]:
                                 header, data = url.split(",", 1)
                                 mime_type = header.split(":")[1].split(";")[0]
                                 image_bytes = base64.b64decode(data)
-                                _logger.info(f"  ✅ Imagen procesada: mime_type={mime_type}, size={len(image_bytes)} bytes")
+                                _logger.info(f"  ✅ Imagen base64 procesada: mime_type={mime_type}, size={len(image_bytes)} bytes")
                                 parts.append(Part.from_bytes(data=image_bytes, mime_type=mime_type))
                             except Exception as e:
                                 _logger.error(f"❌ Error procesando imagen base64: {e}")
                                 parts.append(Part.from_text(f"[Error procesando imagen: {str(e)}]"))
+                        
+                        # Si es URL de GCS o path de attachment
+                        elif url.startswith("gs://") or url.startswith("/api/files/"):
+                            try:
+                                # Importar AttachmentService
+                                from attachment_service import AttachmentService
+                                attachment_service = AttachmentService()
+                                
+                                # Obtener imagen desde GCS
+                                image_bytes = attachment_service.process_image_url(url, chat_id)
+                                
+                                if image_bytes:
+                                    # Determinar MIME type
+                                    if url.startswith("/api/files/"):
+                                        # Obtener metadata del attachment
+                                        attachment_id = url.split("/")[-1]
+                                        attachment_meta = attachment_service.get_attachment_metadata(chat_id, attachment_id)
+                                        mime_type = attachment_service.get_image_mime_type(url, attachment_meta)
+                                    else:
+                                        mime_type = attachment_service.get_image_mime_type(url)
+                                    
+                                    _logger.info(f"  ✅ Imagen GCS procesada: mime_type={mime_type}, size={len(image_bytes)} bytes")
+                                    parts.append(Part.from_bytes(data=image_bytes, mime_type=mime_type))
+                                else:
+                                    _logger.warning(f"  ⚠️ No se pudo obtener imagen de GCS")
+                                    parts.append(Part.from_text("[Imagen no disponible]"))
+                                    
+                            except Exception as e:
+                                _logger.error(f"❌ Error procesando imagen GCS: {e}")
+                                parts.append(Part.from_text(f"[Error cargando imagen: {str(e)}]"))
                         else:
-                            _logger.warning(f"⚠️ URL de imagen no es base64: {url[:50]}...")
+                            _logger.warning(f"⚠️ Formato de imagen no soportado: {url[:50]}...")
+                            parts.append(Part.from_text(f"[Formato de imagen no soportado: {url}]"))
         
         if parts:
             content = Content(role=role, parts=parts)
@@ -493,7 +565,8 @@ async def generate_stream(
     temperature: float,
     max_tokens: int,
     user_id: str,
-    model_config=None
+    model_config=None,
+    chat_id: Optional[str] = None
 ) -> AsyncGenerator[str, None]:
     """
     Genera respuestas en streaming desde Gemini.
@@ -511,7 +584,7 @@ async def generate_stream(
     """
     try:
         # Convertir mensajes
-        gemini_messages = convert_messages_to_gemini(messages)
+        gemini_messages = convert_messages_to_gemini(messages, chat_id)
         
         # Aplicar capacidades específicas del modelo al último mensaje si hay model_config
         if model_config and gemini_messages:
@@ -1009,13 +1082,14 @@ async def chat_completions(
                     generation_config["temperature"],
                     generation_config["max_output_tokens"],
                     user_id,
-                    model_config
+                    model_config,
+                    request.chat_id
                 ),
                 media_type="text/event-stream"
             )
         
         # Si no es streaming
-        gemini_messages = convert_messages_to_gemini(request.messages)
+        gemini_messages = convert_messages_to_gemini(request.messages, request.chat_id)
         
         # Aplicar capacidades específicas del modelo al último mensaje
         if gemini_messages:

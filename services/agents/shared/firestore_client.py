@@ -186,7 +186,8 @@ class FirestoreClient:
         Returns:
             ID del mensaje creado
         """
-        messages_ref = self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).collection(f'{self.COLLECTION_PREFIX}messages')
+        # CAMBIO: usar 'messages' en lugar de 'corpchat_messages'
+        messages_ref = self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).collection('messages')
         
         message_data = {
             'role': role,
@@ -220,10 +221,19 @@ class FirestoreClient:
         Returns:
             Lista de mensajes ordenados por timestamp descendente
         """
-        messages_ref = self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).collection(f'{self.COLLECTION_PREFIX}messages')
+        # CAMBIO: usar 'messages' en lugar de 'corpchat_messages'
+        messages_ref = self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).collection('messages')
         query = messages_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(limit)
         
         messages = [doc.to_dict() | {'id': doc.id} for doc in query.stream()]
+        
+        # Compatibilidad temporal: si no hay mensajes en la nueva estructura, intentar con la antigua
+        if not messages:
+            _logger.info(f"Intentando ruta legacy: corpchat_messages para chat {chat_id}")
+            legacy_ref = self._db.collection(f'{self.COLLECTION_PREFIX}chats').document(chat_id).collection(f'{self.COLLECTION_PREFIX}messages')
+            legacy_query = legacy_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(limit)
+            messages = [doc.to_dict() | {'id': doc.id} for doc in legacy_query.stream()]
+        
         return list(reversed(messages))  # Retornar en orden cronológico
     
     # ===== ADJUNTOS =====
