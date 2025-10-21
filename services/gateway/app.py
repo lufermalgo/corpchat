@@ -460,15 +460,25 @@ def convert_messages_to_gemini(messages: List[Message], chat_id: Optional[str] =
                                 header, data = url.split(",", 1)
                                 mime_type = header.split(":")[1].split(";")[0]
                                 image_bytes = base64.b64decode(data)
-                                _logger.info(f"  ✅ Imagen base64 procesada: mime_type={mime_type}, size={len(image_bytes)} bytes")
+                                
+                                # ESTRATEGIA ADK: Generar ID único para la imagen
+                                import hashlib
+                                image_hash = hashlib.md5(image_bytes).hexdigest()
+                                image_id = f"img_{image_hash[:8]}"
+                                
+                                _logger.info(f"  ✅ Imagen base64 procesada: mime_type={mime_type}, size={len(image_bytes)} bytes, id={image_id}")
                                 parts.append(Part.from_bytes(data=image_bytes, mime_type=mime_type))
+                                
+                                # Agregar referencia de imagen como texto (estrategia ADK)
+                                parts.append(Part.from_text(f"[IMAGE-ID {image_id}]"))
+                                
                             except Exception as e:
                                 _logger.error(f"❌ Error procesando imagen base64: {e}")
                                 parts.append(Part.from_text(f"[Error procesando imagen: {str(e)}]"))
                         
                         # Si es URL de GCS o path de attachment
                         elif url.startswith("gs://") or url.startswith("/api/files/"):
-                            print(f"DEBUG: Procesando imagen URL: {url}")
+                            _logger.info(f"  🔗 Procesando imagen URL: {url}")
                             try:
                                 # Importar AttachmentService
                                 from attachment_service import AttachmentService
@@ -478,6 +488,11 @@ def convert_messages_to_gemini(messages: List[Message], chat_id: Optional[str] =
                                 image_bytes = attachment_service.process_image_url(url, chat_id)
                                 
                                 if image_bytes:
+                                    # ESTRATEGIA ADK: Generar ID único para la imagen
+                                    import hashlib
+                                    image_hash = hashlib.md5(image_bytes).hexdigest()
+                                    image_id = f"img_{image_hash[:8]}"
+                                    
                                     # Determinar MIME type
                                     if url.startswith("/api/files/"):
                                         # Obtener metadata del attachment
@@ -487,8 +502,11 @@ def convert_messages_to_gemini(messages: List[Message], chat_id: Optional[str] =
                                     else:
                                         mime_type = attachment_service.get_image_mime_type(url)
                                     
-                                    _logger.info(f"  ✅ Imagen GCS procesada: mime_type={mime_type}, size={len(image_bytes)} bytes")
+                                    _logger.info(f"  ✅ Imagen GCS procesada: mime_type={mime_type}, size={len(image_bytes)} bytes, id={image_id}")
                                     parts.append(Part.from_bytes(data=image_bytes, mime_type=mime_type))
+                                    
+                                    # Agregar referencia de imagen como texto (estrategia ADK)
+                                    parts.append(Part.from_text(f"[IMAGE-ID {image_id}]"))
                                 else:
                                     _logger.warning(f"  ⚠️ No se pudo obtener imagen de GCS")
                                     parts.append(Part.from_text("[Imagen no disponible]"))
@@ -502,7 +520,7 @@ def convert_messages_to_gemini(messages: List[Message], chat_id: Optional[str] =
         
         if parts:
             content = Content(role=role, parts=parts)
-            gemini_messages.append(content)
+        gemini_messages.append(content)
             _logger.info(f"✅ Mensaje {i+1} convertido con {len(parts)} partes")
         else:
             _logger.warning(f"⚠️ Mensaje {i+1} sin partes válidas")
@@ -832,6 +850,66 @@ async def list_models_legacy():
     return await list_models()
 
 
+async def enrich_messages_with_images(messages: List[Message], chat_id: Optional[str]) -> List[Message]:
+    """
+    Enriquece mensajes con imágenes usando estrategia ADK.
+    Busca imágenes en GCS/Firestore y las agrega al contenido del mensaje.
+    """
+    enriched_messages = []
+    
+    for msg in messages:
+        enriched_msg = msg.copy()
+        
+        # Solo procesar mensajes de usuario
+        if msg.role == "user" and isinstance(msg.content, str) and chat_id:
+            # Verificar si el mensaje menciona imágenes o attachments
+            content_lower = msg.content.lower()
+            if any(keyword in content_lower for keyword in ["imagen", "image", "adjunto", "attachment", "foto", "photo"]):
+                _logger.info(f"🔍 Mensaje menciona imágenes, buscando attachments para chat {chat_id}")
+                
+                try:
+                    from attachment_service import AttachmentService
+                    attachment_service = AttachmentService()
+                    
+                    # Obtener attachments del chat
+                    attachments = attachment_service.get_attachments_for_chat(chat_id)
+                    _logger.info(f"📎 Encontrados {len(attachments)} attachments en chat {chat_id}")
+                    
+                    if attachments:
+                        # Convertir a contenido multimodal
+                        multimodal_content = []
+                        
+                        # Agregar texto original
+                        multimodal_content.append({
+                            "type": "text",
+                            "text": msg.content
+                        })
+                        
+                        # Agregar imágenes como URLs
+                        for attachment in attachments:
+                            if attachment.get("mime_type", "").startswith("image/"):
+                                gcs_uri = attachment.get("gcs_uri")
+                                if gcs_uri:
+                                    _logger.info(f"🖼️ Agregando imagen: {gcs_uri}")
+                                    multimodal_content.append({
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": gcs_uri
+                                        }
+                                    })
+                        
+                        if len(multimodal_content) > 1:  # Si hay imágenes además del texto
+                            enriched_msg.content = multimodal_content
+                            _logger.info(f"✅ Mensaje enriquecido con {len(multimodal_content)-1} imágenes")
+                        
+                except Exception as e:
+                    _logger.error(f"❌ Error enriqueciendo mensaje con imágenes: {e}")
+        
+        enriched_messages.append(enriched_msg)
+    
+    return enriched_messages
+
+
 @app.post("/v1/chat/completions")
 async def chat_completions(
     request: ChatCompletionRequest,
@@ -872,6 +950,10 @@ async def chat_completions(
         )
         
         _logger.info(f"User ID: {user_id}, Chat ID: {chat_id}")
+        
+        # ESTRATEGIA ADK: Enriquecer mensajes con imágenes
+        _logger.info("🔄 Aplicando estrategia ADK para enriquecer mensajes con imágenes")
+        request.messages = await enrich_messages_with_images(request.messages, chat_id)
         
         # TEMPORAL: Si es anonymous, intentar extraer del contexto de Open WebUI
         if user_id == "anonymous":
