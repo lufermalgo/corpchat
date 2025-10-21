@@ -318,43 +318,8 @@ app = FastAPI(
 )
 
 
-@app.middleware("http")
-async def enrich_chat_request(request: Request, call_next):
-    """
-    Enriquece requests de chat con información de attachments.
-    
-    Si Open WebUI no envía chat_id en el request, intenta obtenerlo de headers
-    para habilitar el procesamiento de imágenes desde GCS.
-    """
-    if request.url.path == "/v1/chat/completions":
-        try:
-            # Leer body del request
-            body = await request.body()
-            if body:
-                import json
-                json_body = json.loads(body)
-                
-                # Si no hay chat_id pero hay header de Open WebUI, usar ese
-                if not json_body.get("chat_id"):
-                    chat_id_header = request.headers.get("X-Chat-ID")
-                    if chat_id_header:
-                        json_body["chat_id"] = chat_id_header
-                        _logger.info(f"Enriquecido request con chat_id: {chat_id_header}")
-                
-                # Recrear request con body modificado
-                new_body = json.dumps(json_body).encode()
-                
-                # Crear nuevo request con el body modificado
-                async def receive():
-                    return {"type": "http.request", "body": new_body}
-                
-                request._receive = receive
-                
-        except Exception as e:
-            _logger.warning(f"Error enriqueciendo request: {e}")
-    
-    response = await call_next(request)
-    return response
+# Middleware removido - causaba errores en el request body
+# La funcionalidad se manejará directamente en el endpoint
 
 
 # Modelos Pydantic para requests/responses
@@ -897,6 +862,16 @@ async def chat_completions(
             "anonymous"
         )
         
+        # Extraer chat_id - MÚLTIPLES FUENTES
+        chat_id = (
+            request.chat_id or  # Campo chat_id del request
+            (http_request.headers.get("X-Chat-ID") if http_request else None) or  # Header de chat ID
+            (http_request.headers.get("X-OpenWebUI-Chat-ID") if http_request else None) or  # Header de Open WebUI
+            None
+        )
+        
+        _logger.info(f"User ID: {user_id}, Chat ID: {chat_id}")
+        
         # TEMPORAL: Si es anonymous, intentar extraer del contexto de Open WebUI
         if user_id == "anonymous":
             # Log detallado para debugging
@@ -1083,13 +1058,13 @@ async def chat_completions(
                     generation_config["max_output_tokens"],
                     user_id,
                     model_config,
-                    request.chat_id
+                    chat_id
                 ),
                 media_type="text/event-stream"
             )
         
         # Si no es streaming
-        gemini_messages = convert_messages_to_gemini(request.messages, request.chat_id)
+        gemini_messages = convert_messages_to_gemini(request.messages, chat_id)
         
         # Aplicar capacidades específicas del modelo al último mensaje
         if gemini_messages:
