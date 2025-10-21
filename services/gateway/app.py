@@ -468,6 +468,7 @@ def convert_messages_to_gemini(messages: List[Message], chat_id: Optional[str] =
                         
                         # Si es URL de GCS o path de attachment
                         elif url.startswith("gs://") or url.startswith("/api/files/"):
+                            print(f"DEBUG: Procesando imagen URL: {url}")
                             try:
                                 # Importar AttachmentService
                                 from attachment_service import AttachmentService

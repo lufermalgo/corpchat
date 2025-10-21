@@ -100,7 +100,7 @@ CONTENT_EXTRACTION_ENGINE: "external"
 # Allowed File Extensions: Formatos soportados por CorpChat Pipeline
 # Max Upload Size: (configurado manualmente)
 BYPASS_EMBEDDING_AND_RETRIEVAL: "true"
-RAG_ALLOWED_FILE_EXTENSIONS: "pdf,docx,doc,xlsx,xls"
+RAG_ALLOWED_FILE_EXTENSIONS: "pdf,docx,doc,xlsx,xls,png,jpg,jpeg,gif,bmp,tiff"
 # MAX_UPLOAD_SIZE: "100MB"  # Ejemplo
 
 # CONFIGURACIONES DE STREAMING
