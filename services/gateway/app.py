@@ -864,7 +864,7 @@ async def enrich_messages_with_images(messages: List[Message], chat_id: Optional
         if msg.role == "user" and isinstance(msg.content, str) and chat_id:
             # Verificar si el mensaje menciona imágenes o attachments
             content_lower = msg.content.lower()
-            if any(keyword in content_lower for keyword in ["imagen", "image", "adjunto", "attachment", "foto", "photo"]):
+            if any(keyword in content_lower for keyword in ["imagen", "image", "adjunto", "attachment", "foto", "photo", "explica", "describe", "analiza", "qué", "que"]):
                 _logger.info(f"🔍 Mensaje menciona imágenes, buscando attachments para chat {chat_id}")
                 
                 try:
@@ -901,6 +901,10 @@ async def enrich_messages_with_images(messages: List[Message], chat_id: Optional
                         if len(multimodal_content) > 1:  # Si hay imágenes además del texto
                             enriched_msg.content = multimodal_content
                             _logger.info(f"✅ Mensaje enriquecido con {len(multimodal_content)-1} imágenes")
+                        else:
+                            _logger.warning(f"⚠️ No se encontraron imágenes válidas en attachments")
+                    else:
+                        _logger.warning(f"⚠️ No se encontraron attachments para chat {chat_id}")
                         
                 except Exception as e:
                     _logger.error(f"❌ Error enriqueciendo mensaje con imágenes: {e}")
