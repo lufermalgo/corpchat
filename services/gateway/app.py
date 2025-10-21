@@ -520,7 +520,7 @@ def convert_messages_to_gemini(messages: List[Message], chat_id: Optional[str] =
         
         if parts:
             content = Content(role=role, parts=parts)
-        gemini_messages.append(content)
+            gemini_messages.append(content)
             _logger.info(f"✅ Mensaje {i+1} convertido con {len(parts)} partes")
         else:
             _logger.warning(f"⚠️ Mensaje {i+1} sin partes válidas")
