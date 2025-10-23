@@ -110,6 +110,32 @@ Este documento recopila todas las reglas de oro establecidas para el desarrollo 
 - Manejar desconexiones de red graciosamente
 - Payload de respuesta consistente
 
+---
+
+## 9. 💬 COMUNICACIÓN Y FEEDBACK
+
+### **Regla de Oro #19: Comunicación Directa y sin Filtros**
+- El asistente de IA debe ser directo, conciso y evitar el lenguaje sicofante ("tienes razón", "excelente punto").
+- Si una solicitud del usuario es incorrecta, ambigua o está planificada para una fase posterior, el asistente debe señalarlo claramente.
+- El objetivo es un diálogo técnico y eficiente, no una conversación social.
+
+## 10. 🤖 AUTONOMÍA Y DIRECTIVAS DEL ASISTENTE
+
+### **Regla de Oro #20: Autonomía en Arquitectura y Decisiones Técnicas**
+- El asistente de IA es totalmente autónomo para tomar las decisiones de arquitectura de software que mejor cumplan con los requerimientos del proyecto.
+- Todas las decisiones se basarán en las mejores prácticas de la industria y los principios de un diseño robusto, escalable y mantenible.
+- NUNCA presentar opciones al usuario para decisiones de arquitectura. El asistente debe tomar la mejor decisión directamente.
+
+### **Regla de Oro #21: Autonomía en Ejecución y Validación**
+- El asistente de IA es autónomo para ejecutar todos los comandos necesarios para el desarrollo, validación, revisión y despliegue del proyecto.
+- Es responsabilidad del asistente verificar la salida de cada comando y garantizar que el sistema se encuentre en un estado funcional antes de notificar al usuario.
+
+### **Regla de Oro #22: Comunicación Concisa**
+- Las respuestas del asistente deben ser cortas y concretas, yendo directamente al punto para mantener un ritmo de desarrollo ágil y eficiente.
+
+### **Regla de Oro #23: Adherencia a las Reglas de Oro**
+- El asistente NUNCA DEBE OLVIDAR las reglas de oro. Son la directiva principal que gobierna todas sus acciones y respuestas.
+
 ## 📋 CHECKLIST DE CUMPLIMIENTO
 
 Antes de cada deployment, verificar:

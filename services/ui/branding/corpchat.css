@@ -1,0 +1,19 @@
+/*
+ * CorpChat Custom Branding CSS
+ *
+ * This file is used to override the default Open WebUI styles
+ * to apply our custom corporate branding.
+ */
+
+:root {
+  --primary-color: #003366; /* Example: A corporate blue */
+  --secondary-color: #e6f0ff; /* Example: A light blue accent */
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Add custom styles below */
+
+/* Example: Change the header background */
+.header {
+  background-color: var(--primary-color) !important;
+}

@@ -1,0 +1,33 @@
+# Model Configuration for CorpChat
+# This file defines the mapping between UI model names and actual LLM models
+
+models:
+  gemini-fast:
+    display_name: "Gemini-Super-Fast"
+    description: "Respuestas ultra rápidas y eficientes"
+    llm_model: "gemini-2.5-flash-lite"
+    capabilities: ["text", "reasoning"]
+    max_tokens: 8192
+    temperature: 0.7
+    
+  gemini-thinking:
+    display_name: "Gemini-Thinking"
+    description: "Razonamiento complejo y análisis profundo"
+    llm_model: "gemini-2.5-pro"
+    capabilities: ["text", "reasoning", "analysis"]
+    max_tokens: 32768
+    temperature: 0.3
+    
+  gemini-images:
+    display_name: "Gemini-Images"
+    description: "Generación de imágenes y análisis visual"
+    llm_model: "gemini-2.5-flash-image"
+    capabilities: ["text", "images", "vision"]
+    max_tokens: 8192
+    temperature: 0.8
+
+# Default model for orchestrator
+orchestrator:
+  default_model: "gemini-2.5-flash-lite"
+  max_tokens: 4096
+  temperature: 0.5

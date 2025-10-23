@@ -1,2 +1,0 @@
-# Tests del servicio Ingestor
-

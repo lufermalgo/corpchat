@@ -1,243 +1,104 @@
-version: '3.8'
-
-# ==========================================
-# CORPCHAT LOCAL DEVELOPMENT COMPOSE
-# ==========================================
-# Docker Compose para desarrollo local de CorpChat
-# Namespace: corpchat-local
-# Red: corpchat-local
-
-# Configurar nombre del proyecto para evitar prefijos duplicados
-name: corpchat
-
 services:
-  # ==========================================
-  # GATEWAY SERVICE
-  # ==========================================
-  corpchat-gateway:
-    image: corpchat-gateway:latest
-    build:
-      context: ./services
-      dockerfile: gateway/Dockerfile
-    container_name: corpchat-gateway
-    ports:
-      - "8080:8080"
-    volumes:
-      # Montar código fuente para hot reload
-      - ./services/gateway:/app
-      # Montar credenciales de Google
-      - ./credentials:/app/credentials:ro
-      # Montar variables de entorno
-      - ./.env.local:/app/.env.local:ro
+  # ----------------------------------------------------------------
+  # -- API Gateway Service --
+  # ----------------------------------------------------------------
+  gateway:
+    build: ./services/gateway
+    container_name: ${PROJECT_PREFIX}-gateway
     environment:
-      - ENVIRONMENT=local
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account-local.json
-      - GOOGLE_CLOUD_PROJECT=genai-385616
-      - GOOGLE_CLOUD_LOCATION=us-central1
+      - PROJECT_PREFIX=${PROJECT_PREFIX}
+    ports:
+      - "8080:8080" # Expose gateway on host port 8080 for API calls
     networks:
-      - corpchat-local
+      - corpchat-net
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------
+  # -- UI Service (Open WebUI) --
+  # ----------------------------------------------------------------
+  ui:
+    build: ./services/ui
+    container_name: ${PROJECT_PREFIX}-ui
+    ports:
+      - "3000:8080" # Expose UI on host port 3000, internal port 8080
     depends_on:
-      - corpchat-ingestor
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    labels:
-      - "corpchat.service=gateway"
-      - "corpchat.environment=local"
-      - "corpchat.version=1.0"
-
-  # ==========================================
-  # INGESTOR SERVICE
-  # ==========================================
-  corpchat-ingestor:
-    image: corpchat-ingestor:latest
-    build:
-      context: ./services
-      dockerfile: ingestor/Dockerfile
-    container_name: corpchat-ingestor
-    ports:
-      - "8081:8080"
-    volumes:
-      # Montar código fuente para hot reload (solo archivos específicos)
-      - ./services/ingestor/main.py:/app/main.py
-      - ./services/ingestor/pipeline.py:/app/pipeline.py
-      - ./services/ingestor/chunker.py:/app/chunker.py
-      - ./services/ingestor/embeddings.py:/app/embeddings.py
-      - ./services/ingestor/storage_manager.py:/app/storage_manager.py
-      - ./services/ingestor/openwebui_integration.py:/app/openwebui_integration.py
-      - ./services/ingestor/router.py:/app/router.py
-      - ./services/ingestor/extractors:/app/extractors
-      # Montar credenciales de Google
-      - ./credentials:/app/credentials:ro
-      # Montar variables de entorno
-      - ./.env.local:/app/.env.local:ro
+      - gateway
     environment:
-      - ENVIRONMENT=local
+      # -- Core API Configuration --
+      - OPENAI_API_BASE_URL=http://${PROJECT_PREFIX}-gateway:8080/v1
+      - WEBUI_URL=http://localhost:3000
+      - WEBUI_SECRET_KEY=${SECRET_KEY}
+
+      # -- Disable automatic model downloads --
+      - ENABLE_MODEL_FILTER=false
+      - ENABLE_OPENAI_API=true
+      - DEFAULT_MODELS=""
+      - ENABLE_VERSION_UPDATE_CHECK=false
+      - ENABLE_OLLAMA_API=false
+      - OLLAMA_API_BASE_URL=""
+
+      # -- Google OIDC Authentication --
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - OPENID_PROVIDER_URL=https://accounts.google.com/.well-known/openid-configuration
+      - ENABLE_OAUTH_SIGNUP=true
+      - ENABLE_LOGIN_FORM=false
+      - OAUTH_SCOPES=openid email profile
+      - OAUTH_USERNAME_CLAIM=email
+
+      # -- Other Settings --
+      - SECRET_KEY=${SECRET_KEY}
+      - WEBUI_SESSION_COOKIE_SAME_SITE=lax
+      - WEBUI_AUTH_COOKIE_SAME_SITE=lax
+      - WEBUI_SESSION_COOKIE_SECURE=false
+      - WEBUI_AUTH_COOKIE_SECURE=false
+      - OAUTH_SESSION_TOKEN_ENCRYPTION_KEY=${SECRET_KEY}
+      
+      # -- CORS and User Agent Configuration --
+      - CORS_ALLOW_ORIGIN=http://localhost:3000
+      - USER_AGENT=CorpChat-UI/1.0.0
+    networks:
+      - corpchat-net
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------
+  # -- Backend Orchestrator Service --
+  # ----------------------------------------------------------------
+  orchestrator:
+    build:
+      context: .
+      dockerfile: services/backend/Dockerfile
+    container_name: ${PROJECT_PREFIX}-orchestrator
+    command: python src/orchestrator/agent.py
+    environment:
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account-local.json
-      - GOOGLE_CLOUD_PROJECT=genai-385616
-      - GOOGLE_CLOUD_LOCATION=us-central1
-      - GCS_BUCKET_ATTACHMENTS=corpchat-genai-385616-attachments
-    networks:
-      - corpchat-local
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    labels:
-      - "corpchat.service=ingestor"
-      - "corpchat.environment=local"
-      - "corpchat.version=1.0"
-
-  # ==========================================
-  # UI SERVICE (OPEN WEBUI)
-  # ==========================================
-  corpchat-ui:
-    image: corpchat-ui:latest
-    build:
-      context: ./services
-      dockerfile: ui/Dockerfile
-    container_name: corpchat-ui
-    ports:
-      - "8082:8080"
+      - PROJECT_PREFIX=${PROJECT_PREFIX}
     volumes:
-      # Montar configuración de Open WebUI
-      - ./services/ui/env-vars.yaml:/app/env-vars.yaml:ro
-      # Volumen persistente para datos de Open WebUI
-      - corpchat-ui-data:/app/backend/data
-      # Volumen para uploads locales
-      - corpchat-ui-uploads:/app/backend/uploads
-    environment:
-      - ENVIRONMENT=local
-      # Variables específicas de Open WebUI
-      - OPENAI_API_BASE_URL=http://corpchat-gateway:8080/v1
-      - OPENAI_API_KEY=corpchat-gateway
-      - OPENAI_API_MODELS=gemini-auto,gemini-thinking,gemini-coding,gemini-analysis,gemini-fast,gemini-vision
-      - OPENAI_API_EMBEDDING_MODELS=text-embedding-004
-      - AUDIO_STT_ENGINE=openai
-      - AUDIO_STT_MODEL=whisper-1
-      - AUDIO_STT_OPENAI_API_BASE_URL=http://corpchat-gateway:8080/v1/audio
-      - AUDIO_STT_OPENAI_API_KEY=corpchat-gateway
-      - AUDIO_STT_APPEND_MODE=true
-      - AUDIO_STT_CONTINUOUS_MODE=true
-      - EXTERNAL_DOCUMENT_LOADER_URL=http://corpchat-ingestor:8080/extract
-      - EXTERNAL_DOCUMENT_LOADER_API_KEY=corpchat-local
-      - VECTOR_DB=chroma
-      - USE_EMBEDDING_MODEL_DOCKER=
-      - RAG_EMBEDDING_MODEL=
+      - ./services/backend/config:/app/config:ro
     networks:
-      - corpchat-local
-    depends_on:
-      - corpchat-gateway
-      - corpchat-ingestor
+      - corpchat-net
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    labels:
-      - "corpchat.service=ui"
-      - "corpchat.environment=local"
-      - "corpchat.version=1.0"
 
-  # ==========================================
-  # ORCHESTRATOR SERVICE (OPCIONAL)
-  # ==========================================
-  corpchat-orchestrator:
-    image: corpchat-orchestrator:latest
+  # ----------------------------------------------------------------
+  # -- Backend Agent Generalist Service --
+  # ----------------------------------------------------------------
+  agent-generalist:
     build:
-      context: ./services
-      dockerfile: agents/orchestrator/Dockerfile
-    container_name: corpchat-orchestrator
-    ports:
-      - "8083:8080"
-    volumes:
-      # Montar código fuente para hot reload
-      - ./services/agents:/app
-      # Montar credenciales de Google
-      - ./credentials:/app/credentials:ro
-      # Montar variables de entorno
-      - ./.env.local:/app/.env.local:ro
+      context: .
+      dockerfile: services/backend/Dockerfile
+    container_name: ${PROJECT_PREFIX}-agent-generalist
+    command: python src/generalist/agent.py
     environment:
-      - ENVIRONMENT=local
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account-local.json
-      - GOOGLE_CLOUD_PROJECT=genai-385616
-      - GOOGLE_CLOUD_LOCATION=us-central1
+      - PROJECT_PREFIX=${PROJECT_PREFIX}
+    volumes:
+      - ./services/backend/config:/app/config:ro
     networks:
-      - corpchat-local
-    depends_on:
-      - corpchat-gateway
-      - corpchat-ingestor
+      - corpchat-net
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    labels:
-      - "corpchat.service=orchestrator"
-      - "corpchat.environment=local"
-      - "corpchat.version=1.0"
-    profiles:
-      - orchestrator  # Solo se inicia si se especifica el profile
 
-# ==========================================
-# NETWORKS
-# ==========================================
 networks:
-  corpchat-local:
+  corpchat-net:
     driver: bridge
-    name: corpchat-local
-    labels:
-      - "corpchat.network=local"
-      - "corpchat.environment=local"
-
-# ==========================================
-# VOLUMES
-# ==========================================
-volumes:
-  # Datos persistentes de Open WebUI
-  corpchat-ui-data:
-    driver: local
-    name: corpchat-ui-data
-    labels:
-      - "corpchat.volume=ui-data"
-      - "corpchat.environment=local"
-
-  # Uploads de Open WebUI
-  corpchat-ui-uploads:
-    driver: local
-    name: corpchat-ui-uploads
-    labels:
-      - "corpchat.volume=ui-uploads"
-      - "corpchat.environment=local"
-
-# ==========================================
-# CONFIGURACIÓN ADICIONAL
-# ==========================================
-# Para iniciar todos los servicios:
-# docker-compose up -d
-#
-# Para iniciar solo servicios básicos (sin orchestrator):
-# docker-compose up -d corpchat-gateway corpchat-ingestor corpchat-ui
-#
-# Para iniciar con orchestrator:
-# docker-compose --profile orchestrator up -d
-#
-# Para ver logs:
-# docker-compose logs -f
-#
-# Para detener servicios:
-# docker-compose down
-#
-# Para limpiar volúmenes:
-# docker-compose down -v

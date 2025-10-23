@@ -1,0 +1,9 @@
+google-adk
+google-cloud-aiplatform
+google-cloud-firestore
+googleapis-common-protos
+protobuf
+vertexai
+PyYAML
+a2a
+aiohttp

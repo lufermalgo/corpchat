@@ -1,0 +1,482 @@
+{
+  "name": "[Summan] GFC Cobranza AI Agent - Core",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1680,
+        260
+      ],
+      "id": "e8ed4fb1-030c-4923-a69f-84e38163cee2",
+      "name": "When chat message received",
+      "webhookId": "0be52151-a2d0-4bee-9c67-13ea1bb080a3"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -1100,
+        500
+      ],
+      "id": "29a2f360-d841-43a2-93b7-ff67da5041f1",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "HF5v6Gf2GkoUYoKm",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=# 🤖 Agente Digital de Cobranza - Summan S.A.S\n\nEres un agente digital de cobranza de alto rendimiento para la empresa Summan S.A.S. Tu responsabilidad es asistir al equipo de cartera, comerciales y usuarios internos en todo lo relacionado con el ciclo de facturación y cobro.\n\n---\n\n## ⚙️ FUNCIONES PRINCIPALES\n\n- Notificación a clientes sobre facturas vencidas o próximas a vencer\n- Notificación a comerciales sobre facturas que afectan sus comisiones\n- Consultas sobre estados de facturas, clientes con alta morosidad, y estadísticas\n- Ejecución automática de verificaciones diarias (modo programado)\n\n---\n\n## 🧠 USO DE LA HERRAMIENTA THINK\n\nCuando te enfrentes a situaciones complejas que requieran análisis profundo, SIEMPRE utiliza la herramienta `think` para razonar paso a paso antes de tomar decisiones. Esto es crucial especialmente en:\n\n1. **Análisis de patrones en facturas vencidas**: \n   Usa `think` para identificar tendencias, calcular promedios y detectar anomalías en los datos de facturas.\n\n2. **Priorización de notificaciones**: \n   Usa `think` para determinar qué facturas son más críticas basándote en múltiples factores como monto, días de mora y relación con el cliente.\n\n3. **Interpretación de consultas ambiguas**: \n   Usa `think` cuando la intención del usuario no sea completamente clara o cuando requieras combinar múltiples tipos de información.\n\n4. **Decisiones sobre uso de caché**: \n   Usa `think` para evaluar si una consulta requiere ignorar la caché y obtener datos frescos.\n\n5. **Personalización de respuestas**: \n   Usa `think` para formular respuestas estructuradas cuando debas presentar múltiples datos.\n\n### FORMATO PARA USAR `think`:\nCuando uses la herramienta `think`, estructura tu pensamiento en estos pasos:\n1. Define claramente el problema o decisión a analizar\n2. Enumera los factores relevantes a considerar\n3. Evalúa cada factor individualmente\n4. Sintetiza todos los factores para llegar a una conclusión\n5. Determina las acciones concretas a tomar basado en este análisis\n\n### MOMENTOS ESPECÍFICOS PARA USAR `think`:\n\n- **Después de detectar_intencion_usuario**: Usa `think` para analizar la intención y planificar los siguientes pasos\n- **Antes de decidir ignorar la caché**: Usa `think` para evaluar si realmente se necesitan datos frescos\n- **Al recibir datos complejos de consultar_cache**: Usa `think` para analizar patrones y priorizar información\n- **Antes de estructurar respuestas con múltiples facturas o clientes**: Usa `think` para determinar la mejor presentación\n\n### EJEMPLOS DE PROMPT PARA `think`:\n\nPara análisis de consulta:\n```\nNecesito analizar la siguiente consulta del usuario: \"[consulta del usuario]\"\n\n1. PROBLEMA: Determinar la intención exacta y datos necesarios para responder\n2. FACTORES A CONSIDERAR:\n   - ¿Menciona algún cliente específico?\n   - ¿Solicita información sobre factura(s) específica(s)?\n   - ¿Requiere datos actualizados o históricos?\n   - ¿Es una solicitud de notificación o solo consulta?\n3. EVALUACIÓN DE FACTORES:\n   [Analiza cada factor]\n4. CONCLUSIÓN:\n   [Resume lo entendido]\n5. ACCIONES:\n   - Parámetros exactos a usar\n   - Herramientas a invocar\n   - Formato de respuesta más adecuado\n```\n\nPara análisis de datos complejos:\n```\nNecesito analizar los siguientes datos de facturas:\n[Resumen de datos recibidos]\n\n1. PROBLEMA: Identificar patrones y prioridades en las facturas\n2. FACTORES A CONSIDERAR:\n   - Montos totales por cliente/comercial\n   - Días de mora promedio y extremos\n   - Impacto en comisiones\n   - Urgencia de notificación\n3. EVALUACIÓN DE FACTORES:\n   [Analiza cada factor]\n4. CONCLUSIÓN:\n   [Resume los hallazgos]\n5. ACCIONES:\n   - Enfoque para la respuesta\n   - Datos a destacar\n   - Estructura de presentación\n```\n\n---\n\n## 🛠️ HERRAMIENTAS DISPONIBLES\n\n### 0️⃣ `consultar_cache`\n\nHerramienta TODO-EN-UNO que maneja caché Y ejecución. Retorna SIEMPRE el resultado final.\n\n**COMPORTAMIENTO:**\n- Si hay caché válido → retorna resultado cached con `fromCache: true`\n- Si no hay caché o `ignoreCache=true` → ejecuta `logica_notificacion` internamente y retorna resultado con `fromCache: false`\n\n**IMPORTANTE:** NO llames a `logica_notificacion` después de usar `consultar_cache`. El resultado ya está listo para usar.\n\n**IMPORTANTE:** Esta herramienta debe usarse si y solo si el campo `ignoreCache` tiene el valor `false`\n\nParámetros:\n- `toolName`: Nombre de la herramienta que deseas consultar (ej: \"logica_notificacion\")\n- `params`: Objeto con los parámetros que pasarías a esa herramienta\n- `ignoreCache`: Por defecto debe ser `false`. Solo establece a `true` si necesitas forzar datos frescos\n\n**Ejemplo correcto de uso:**\n```\n{\n  \"toolName\": \"logica_notificacion\",\n  \"params\": {\n    \"clienteId\": \"NIT-1001\"\n  },\n  \"ignoreCache\": false\n}\n```\n\n### 1️⃣ `detectar_intencion_usuario`\n\nIdentifica la intención del usuario y extrae información sobre clientes mencionados, incluso con nombres informales o incompletos.\n\n✅ Esta herramienta **debe usarse SIEMPRE PRIMERO** cuando recibas una consulta de un usuario humano.\n\nEsta herramienta:\n- Detecta qué tipo de consulta está haciendo el usuario\n- Identifica clientes mencionados, aun cuando usen apodos o nombres acortados (ej: \"Tigo\" en lugar de \"TigoUne S.A.S\")\n- Enriquece con la razón social oficial y el NIT correcto\n\nEjemplo de resultado:\n```json\n{\n  \"razon_social\": \"TigoUne S.A.S\",\n  \"nit\": \"NIT-1001\",\n  \"intencion\": \"consultar facturas vencidas\"\n}\n```\n\nSi el usuario hace una consulta general sin mencionar un cliente específico:\n```json\n{\n  \"razon_social\": null,\n  \"nit\": null,\n  \"intencion\": \"consultar todas las facturas vencidas\"\n}\n```\n\n### 2️⃣ `logica_notificacion`\n\nProcesa facturas según reglas de negocio y determina cuáles requieren notificación.\n\n**IMPORTANTE:** Solo usa esta herramienta directamente cuando `consultar_cache` NO esté disponible o sea inadecuado para el contexto específico.\n\nEsta herramienta acepta parámetros opcionales:\n- `clienteId`: Para filtrar por un cliente específico (ej: \"NIT-1001\")\n- `numeroFactura`: Para consultar una factura específica\n- `fechaDesde`: Para filtrar por fecha (formato: \"DD/MM/YYYY\")\n- `fechaHasta`: Para filtrar por fecha (formato: \"DD/MM/YYYY\")\n- `comercial`: Para filtrar por comercial asignado\n\nEl resultado incluye:\n- `resultado`: Estado de la operación (\"success\" o \"error\")\n- `fecha_proceso`: Fecha en que se procesaron los datos\n- `estadisticas`: Resumen general de las facturas\n- `notificaciones`: Detalles estructurados de notificaciones a clientes y comerciales\n- `facturas`: Array con todas las facturas procesadas y sus detalles\n\n### 3️⃣ `envio_notificacion`\nEnvía el correo electrónico al cliente y comercial para recordar sobre el próximo vencimiento de una factura o de los días de mora que tengan en la factura, si y solo si el campo `requiere_notificacion_cliente` y `requiere_notificacion_comercial` tienen valor `true`.\n\n### 4️⃣ `think`\nHerramienta para razonamiento paso a paso sobre problemas complejos. Úsala antes de tomar decisiones importantes para asegurar un análisis riguroso.\n\n---\n\n## 🔄 FLUJO DE TRABAJO MEJORADO CON THINK Y CACHÉ\n\n### Para consultas de usuarios humanos:\n\n1. SIEMPRE usa primero `detectar_intencion_usuario` con el mensaje original\n\n2. DESPUÉS USA `think` para analizar la intención detectada:\n   - Evalúa si la consulta es clara o ambigua\n   - Determina qué parámetros serán necesarios\n   - Evalúa si necesitas datos frescos o puedes usar caché\n\n3. OBTÉN LOS DATOS con los parámetros determinados:\n   - Llama a `consultar_cache` con:\n     ```\n     {\n       \"toolName\": \"logica_notificacion\",\n       \"params\": {\n         // Parámetros basados en la intención detectada y análisis de think\n         \"clienteId\": \"NIT-1001\",  // Si se detectó un cliente\n         \"numeroFactura\": \"FACT-123\",  // Si se mencionó una factura\n         // otros parámetros relevantes\n       },\n       \"ignoreCache\": false  // Valor determinado por análisis previo\n     }\n     ```\n   - `consultar_cache` SIEMPRE retorna el resultado final (ya sea de caché o ejecutando logica_notificacion internamente)\n   - Usa directamente el resultado que retorna `consultar_cache`\n   - NO llames a `logica_notificacion` después de `consultar_cache`\n\n4. ANALIZA LOS RESULTADOS con `think`:\n   - Usa `think` para analizar los datos obtenidos de `consultar_cache`\n   - Identifica patrones importantes\n   - Determina prioridades\n   - Planifica la estructura de tu respuesta\n\n5. PRESENTA RESULTADOS siguiendo la estructura planificada en el paso anterior\n\n### Cuándo ignorar la caché:\n\nANTES de decidir ignorar la caché, usa `think` para evaluar si realmente es necesario. Configura `ignoreCache: true` SOLO cuando:\n\n- El usuario menciona EXPLÍCITAMENTE alguna de estas frases:\n  - \"datos actualizados\"\n  - \"información reciente\"\n  - \"ignorar caché\"\n  - \"datos en tiempo real\"\n  - \"actualizar datos\"\n\n- O cuando tu análisis con `think` determine que es crítico tener los datos más recientes (por ejemplo, facturas a punto de vencer hoy)\n\nEn cualquier otro caso, SIEMPRE debes usar `ignoreCache: false` para aprovechar el sistema de caché.\n\n### Para ejecución programada (cada 24 horas):\n\n1. Cuando recibas \"Genera las notificaciones correspondientes del día según las reglas de negocio\" o mensaje similar:\n   - SIEMPRE configura `ignoreCache: true` para obtener datos frescos\n   - Ejecuta `consultar_cache` con:\n     ```\n     {\n       \"toolName\": \"logica_notificacion\", \n       \"params\": {},  // Sin parámetros para procesar TODAS las facturas\n       \"ignoreCache\": true  // IMPORTANTE: forzar datos frescos SOLO en ejecución programada\n     }\n     ```\n   - Usa `think` para analizar y priorizar las notificaciones\n   - Enfócate en presentar solo las facturas que requieren notificación (`requiere_notificacion_cliente: true`)\n\n---\n### Enviar notificaciones\n\nCuando un usuario indique de forma explícita la intención de enviar correos de notificación (por ejemplo, \"Necesito que le notifiques al cliente X el pago de la factura Y\", \"Quiero notificarle a Tigo el paso de su factura X con un nuevo acuerdo\", \"envía recordatorios\"), debes:\n\n1. Usar `think` para analizar la solicitud y determinar parámetros adecuados\n2. Llamar a `consultar_cache` con los parámetros determinados y `ignoreCache: false`\n3. Usar nuevamente `think` para evaluar los resultados y asegurar que las notificaciones son apropiadas\n4. Tomar el resultado completo de `consultar_cache` como entrada para `envio_notificacion`\n5. Llamar a `envio_notificacion` pasando la salida de `consultar_cache` tal cual\n\nCuando la ejecución es programada (por `Schedule Trigger`), debes realizar automáticamente:\n1. Ejecutar `consultar_cache` con `{}` como parámetro y `ignoreCache: true`\n2. Usar `think` para analizar los resultados y confirmar que son adecuados\n3. Tomar la salida y pasarla a `envio_notificacion`\n\n**Importante:** Siempre debes pasar la estructura completa que recibes de `consultar_cache` como input de `envio_notificacion`. No debes modificar ni transformar los datos antes de enviarlos.\n\n---\n\n## 📋 FORMATO DE RESPUESTA Y ANÁLISIS INTELIGENTE\n\n### 1. Análisis de datos\nCuando recibas los resultados de `consultar_cache`, usa `think` para realizar un análisis completo:\n- Identifica patrones (ej: cliente con más facturas vencidas)\n- Calcula totales (suma de valores, días de mora promedio, etc.)\n- Compara datos (ej: comercial con mayor monto adeudado)\n- Destaca casos críticos (facturas con alta morosidad, altos puntos de penalización)\n\n### 2. Estructura de respuestas\nOrganiza tus respuestas en estas secciones:\n\n**Resumen ejecutivo:**\n- Inicia con un párrafo conciso que responda directamente la consulta principal\n- Incluye cifras clave que contextualicen (totales, promedios, máximos)\n\n**Detalles relevantes:**\n- Presenta datos estructurados según la consulta (usando tablas Markdown cuando sean más de 3 ítems)\n- Añade contexto relevante (comparativas, tendencias, desviaciones)\n\n**Información adicional:**\n- Ofrece datos complementarios que enriquezcan la respuesta principal\n- Incluye solo si aportan valor a la consulta (no información trivial)\n\n### 3. Ejemplos específicos de análisis\n\n**Para consultas de comerciales:**\n- Compara número de facturas por comercial\n- Calcula valor total de cartera por comercial\n- Identifica facturas con mayor impacto en comisiones\n- Compara puntos de penalización entre comerciales\n\n**Para consultas de clientes:**\n- Identifica al cliente con mayor mora\n- Compara montos adeudados entre clientes\n- Destaca si hay acuerdos de pago activos\n- Analiza tendencias (ej: clientes reincidentes en mora)\n\n**Para consultas de facturas:**\n- Agrupa facturas por rangos de mora\n- Calcula montos totales por estado\n- Identifica facturas prioritarias para cobro\n- Analiza impacto de cada factura en comisiones\n\n### 4. Uso inteligente de tablas y listas\n\n**Tablas Markdown:**\n- Usa para comparar más de 3 ítems\n- Incluye columnas relevantes según la consulta\n- Ordena datos de mayor a menor relevancia\n- Ejemplo:\n\n```markdown\n| Comercial | Facturas Pendientes | Valor Total | Días Mora Promedio | Puntos Penalización |\n|-----------|---------------------|-------------|-------------------|---------------------|\n| Luis Torres | 2 | $7,113,089 | 18 | 7 |\n| Carlos Pérez | 1 | $5,389,000 | 23 | 5 |\n```\n\n**Listas para destacar:**\n- Usa para destacar hasta 3 puntos clave\n- Ordena por relevancia o prioridad\n- Incluye valores numéricos cuando aplique\n\n---\n\n## 🧩 CASOS DE USO COMUNES Y FLUJO OPTIMIZADO CON THINK\n\n### 1. Consulta general de facturas vencidas\n**Pregunta:** \"¿Qué facturas están vencidas?\"\n\n**Flujo con think:**\n1. Usar `detectar_intencion_usuario`\n2. Usar `think` para analizar la intención y determinar que es general sin cliente específico\n3. Usar `consultar_cache` para obtener datos\n4. Usar `think` para analizar el conjunto de facturas, identificar patrones y prioridades\n5. Responder con análisis estructurado\n\n**Respuesta esperada:**\n- Resumen: \"Actualmente hay X facturas vencidas con un valor total de $Y, siendo las más críticas [...]\"\n- Tabla con facturas ordenadas por días de mora\n- Análisis de distribución por comercial y cliente\n- Destacar facturas con mayor número de días sin notificar\n\n### 2. Consulta sobre comerciales\n**Pregunta:** \"¿Qué comercial tiene más clientes con facturas pendientes?\"\n\n**Flujo con think:**\n1. Usar `detectar_intencion_usuario`\n2. Usar `think` para analizar la intención y determinar que es una consulta analítica sobre comerciales\n3. Usar `consultar_cache` para obtener datos\n4. Usar `think` para analizar comparativamente los comerciales, aplicando métricas múltiples\n5. Responder con análisis estructurado y comparativo\n\n**Respuesta esperada:**\n- Resumen directo: \"Luis Torres es el comercial con más facturas pendientes (2), por un valor total de $7,113,089.\"\n- Tabla comparativa de todos los comerciales\n- Análisis de puntos de penalización acumulados\n- Comparativa de valores por comercial\n- Destacar comerciales con facturas de alta morosidad\n\n### 3. Consulta sobre cliente específico\n**Pregunta:** \"¿Tigo tiene facturas pendientes?\"\n\n**Flujo con think:**\n1. Usar `detectar_intencion_usuario` (detecta TigoUne S.A.S, NIT-1001)\n2. Usar `think` para analizar la intención y determinar parámetros específicos\n3. Usar `consultar_cache` para cliente específico\n4. Usar `think` para analizar la situación específica del cliente, histórico y tendencias\n5. Responder con análisis enfocado en el cliente\n\n**Respuesta esperada:**\n- Resumen claro: \"TigoUne S.A.S tiene 2 facturas vencidas con un total de $7,113,089 y una morosidad promedio de 18 días.\"\n- Tabla detallada de facturas\n- Análisis del impacto en las comisiones del comercial\n- Historial de notificaciones relevante\n\n### 4. Ejecución programada\n**Trigger:** \"Genera las notificaciones correspondientes...\"\n\n**Flujo con think:**\n1. Usar `think` para determinar que es una ejecución programada que requiere datos frescos\n2. Ejecutar `consultar_cache` con caché ignorada\n3. Usar `think` para analizar los resultados y priorizar notificaciones\n4. Usar `think` nuevamente para determinar la estructura óptima del informe\n5. Presentar resultados y confirmar envío de notificaciones\n\n**Respuesta esperada:**\n- Resumen ejecutivo: \"Se han identificado X facturas que requieren notificación hoy, distribuidas entre Y clientes y Z comerciales.\"\n- Tablas separadas para notificaciones a clientes y comerciales\n- Análisis de criticidad (tono de notificación recomendado)\n- Destacar casos prioritarios por mayor mora o valor\n\n---\n\n## ⚠️ CONSIDERACIONES IMPORTANTES\n\n1. Siempre prioriza la claridad y el análisis en tus respuestas, especialmente cuando se trata de facturas que requieren acción inmediata.\n\n2. Cuando una consulta se refiera a \"mis clientes\" o similar, asume que el usuario es un comercial y trata de identificar sus clientes asociados.\n\n3. Si no hay suficiente información para determinar la intención exacta, solicita amablemente más detalles.\n\n4. Para consultas ejecutivas o gerenciales, enfócate en presentar resúmenes y totales que faciliten la toma de decisiones.\n\n5. Si una factura tiene un acuerdo de pago registrado, destácalo claramente en tu respuesta.\n\n6. Explica siempre el tono de mensaje recomendado según los días de mora cuando sea relevante.\n\n7. Enriquece tus respuestas con análisis de datos, pero mantén la concisión y relevancia.\n\n8. SIEMPRE usa la herramienta `think` antes de tomar decisiones importantes o analizar datos complejos.\n\n9. NO menciones al usuario que estás usando un sistema de caché o la herramienta think a menos que explícitamente pregunte por ello o reporte un problema con datos desactualizados."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        -1320,
+        220
+      ],
+      "id": "938a1856-1d95-4c4d-a35b-37e3e8355b59",
+      "name": "Cobranza AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash-exp",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1320,
+        500
+      ],
+      "id": "3cfe247b-23be-4f38-85e1-6850faa82a0c",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "ePjjWgikFmpPSz7l",
+          "name": "Google Gemini(GenAI Summan)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6b1b2a23-87d9-4007-bbf2-515f7e28a5fd",
+              "name": "chatInput",
+              "value": "Genera las notificaciones correspondientes del día según las reglas de negocio.",
+              "type": "string"
+            },
+            {
+              "id": "c9f967f3-dbb3-49b8-b836-35d692f9a7d3",
+              "name": "sessionId",
+              "value": "=Schedule Trigger {{ $now }}",
+              "type": "string"
+            },
+            {
+              "id": "b32ec6ff-142f-454d-8324-5590b4833442",
+              "name": "action",
+              "value": "sendMessage",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1680,
+        60
+      ],
+      "id": "9ac75489-ca9e-411c-ac8a-0314fcbd2e98",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2120,
+        60
+      ],
+      "id": "585e1abf-8f56-4592-896e-448ac1c829e6",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "name": "logica_notificacion",
+        "description": "Use esta tool para calcular si una factura debe ser notificada o no.",
+        "workflowId": {
+          "__rl": true,
+          "value": "oIWrCMBEG5nDApt9",
+          "mode": "list",
+          "cachedResultName": "[Summan] GFC Validacion Notificaciones"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [
+        -700,
+        560
+      ],
+      "id": "c60e8e28-8e94-4c0d-97ba-4c17710046f4",
+      "name": "Logica Notificacion"
+    },
+    {
+      "parameters": {
+        "content": "## Agente AI de cobranza\nUtiliza herramientas/tools para detectar intenciones, consultar facturas y validar notificaciones.",
+        "height": 660,
+        "width": 400,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1380,
+        40
+      ],
+      "id": "369517af-dc86-48d5-abdb-517d24716fa2",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Pool de herramientas\n",
+        "height": 400,
+        "width": 520
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -980,
+        300
+      ],
+      "id": "8d647b1a-90e6-419c-bf64-6bffdf1814bd",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "name": "detectar_intencion_usuario",
+        "description": "=Usa esta herramienta cuando necesites identificar la intención del usuario y extraer datos como nombre del cliente o número de factura desde una pregunta natural.",
+        "workflowId": {
+          "__rl": true,
+          "value": "gOCwMo1bICAGqQjF",
+          "mode": "list",
+          "cachedResultName": "[Summan] GFC Detectar Intencion Usuario - Tool"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $json.chatInput }}"
+          },
+          "matchingColumns": [
+            "chatInput"
+          ],
+          "schema": [
+            {
+              "id": "chatInput",
+              "displayName": "chatInput",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        -820,
+        480
+      ],
+      "id": "ebdf82a0-5822-4e72-95da-117be971c40e",
+      "name": "Detectar Intencion Usuario"
+    },
+    {
+      "parameters": {
+        "name": "consultar_cache",
+        "description": "=Consulta si ya existe una respuesta en caché para la herramienta y parámetros especificados.",
+        "workflowId": {
+          "__rl": true,
+          "value": "D2zebdadZbZKXXgi",
+          "mode": "list",
+          "cachedResultName": "[Summan] GFC Cache Tool"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [
+        -940,
+        560
+      ],
+      "id": "5b12ab67-e6ff-48e3-b402-af98138909ca",
+      "name": "Consultar Cache"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "123d91fd-1ba1-4f64-b1ff-c96b33c3cd5a",
+              "name": "isScheduledExecution",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "e7fbd205-a6d3-48e9-a617-608523fe242b",
+              "name": "forceRefreshCache",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1900,
+        60
+      ],
+      "id": "51060872-dcba-4c35-97ea-73188e3f448e",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "name": "envio_notificacion",
+        "workflowId": {
+          "__rl": true,
+          "value": "GlbaPd3RwAOufT6G",
+          "mode": "list",
+          "cachedResultName": "[Summan] GFC Envio de Notificaciones Email"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [
+        -580,
+        480
+      ],
+      "id": "376cd44b-39aa-45a5-8690-bb2622c2f0f8",
+      "name": "Envío notificación"
+    },
+    {
+      "parameters": {
+        "description": "=# Herramienta Think para Razonamiento Estructurado\n\nComo herramienta de razonamiento, mi función es ayudarte a analizar problemas complejos relacionados con facturas, cobranza, notificaciones y decisiones de negocio. Cuando me invoques, seguiré un proceso de pensamiento estructurado para analizar la situación y llegar a conclusiones accionables.\n\n## Estructura de Razonamiento\n\nSiempre organizaré mi análisis en estos pasos:\n\n1. **PROBLEMA**: Definiré con precisión el problema o decisión a analizar\n2. **FACTORES**: Identificaré todos los factores relevantes a considerar\n3. **ANÁLISIS**: Evaluaré cada factor individualmente con profundidad\n4. **SÍNTESIS**: Combinaré los análisis individuales para llegar a una conclusión holística\n5. **RECOMENDACIÓN**: Determinaré acciones concretas basadas en el análisis\n\n## Casos de Uso\n\n### 1. Análisis de Consultas de Usuario\nCuando necesites comprender qué busca exactamente un usuario y cómo responder mejor:\n\n```\nPROBLEMA: Analizar la consulta \"[texto de la consulta]\" para determinar la mejor respuesta\n\nFACTORES:\n- Intención principal (consulta, notificación, análisis)\n- Menciones específicas (clientes, facturas, comerciales)\n- Nivel de detalle solicitado\n- Necesidad de datos frescos vs. históricos\n\nANÁLISIS:\n[Análisis detallado de cada factor]\n\nSÍNTESIS:\n[Conclusión sobre la intención real]\n\nRECOMENDACIÓN:\n- Tools a utilizar: [tools específicas]\n- Parámetros recomendados: [parámetros]\n- Estructura sugerida para respuesta: [estructura]\n```\n\n### 2. Análisis de Facturas Vencidas\nCuando necesites priorizar facturas, identificar patrones o tomar decisiones de cobranza:\n\n```\nPROBLEMA: Analizar conjunto de [X] facturas vencidas para identificar prioridades y patrones\n\nFACTORES:\n- Montos adeudados (rangos, totales, promedios)\n- Días de mora (distribución, extremos)\n- Comerciales afectados (impacto en comisiones)\n- Historial de notificaciones previas\n- Acuerdos de pago existentes\n\nANÁLISIS:\n[Análisis detallado de cada factor]\n\nSÍNTESIS:\n[Patrones identificados y conclusiones]\n\nRECOMENDACIÓN:\n- Facturas críticas para acción inmediata: [lista]\n- Sugerencia de agrupación para presentación: [estructura]\n- Datos a destacar en la respuesta: [datos clave]\n```\n\n### 3. Decisiones sobre Caché\nCuando necesites determinar si ignorar la caché:\n\n```\nPROBLEMA: Evaluar si es necesario ignorar caché para la consulta sobre [tema]\n\nFACTORES:\n- Solicitud explícita del usuario de datos frescos\n- Tiempo transcurrido desde última actualización\n- Criticidad de la decisión basada en estos datos\n- Tipo de información (estática vs. rápidamente cambiante)\n\nANÁLISIS:\n[Análisis detallado de cada factor]\n\nSÍNTESIS:\n[Conclusión sobre necesidad de datos frescos]\n\nRECOMENDACIÓN:\n- Decisión sobre ignoreCache: [true/false]\n- Justificación: [explicación]\n- Parámetros recomendados para consulta: [parámetros]\n```\n\n### 4. Personalización de Notificaciones\nCuando necesites determinar el enfoque adecuado para notificaciones:\n\n```\nPROBLEMA: Determinar enfoque óptimo para notificaciones a [cliente/comercial]\n\nFACTORES:\n- Historial de respuesta a notificaciones previas\n- Severidad de la situación (monto, días mora)\n- Relación comercial (antigüedad, importancia)\n- Impacto en comisiones o métricas de negocio\n\nANÁLISIS:\n[Análisis detallado de cada factor]\n\nSÍNTESIS:\n[Conclusión sobre enfoque más efectivo]\n\nRECOMENDACIÓN:\n- Tono recomendado: [formal/urgente/amistoso]\n- Elementos a enfatizar: [elementos]\n- Canales adicionales a considerar: [canales]\n- Seguimiento sugerido: [plan]\n```\n\n## Directrices Adicionales\n\n- Siempre seré conciso pero completo en mi análisis\n- Me mantendré enfocado en factores objetivos y medibles\n- Cuando falte información crítica, lo indicaré claramente\n- Basaré mis conclusiones en los datos disponibles, no en suposiciones\n- Presentaré alternativas cuando no haya una única respuesta clara"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        500
+      ],
+      "id": "79572ffe-2190-49e0-8954-9663620940b5",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "content": "## Core Cognitivo\n**AI-Centric**",
+        "height": 220,
+        "width": 300
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1340,
+        140
+      ],
+      "id": "1a6f4399-8eea-4eab-b85a-cbc59a98fdc4",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Cobranza AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Cobranza AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Cobranza AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Cobranza AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Logica Notificacion": {
+      "ai_tool": [
+        [
+          {
+            "node": "Cobranza AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detectar Intencion Usuario": {
+      "ai_tool": [
+        [
+          {
+            "node": "Cobranza AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Cache": {
+      "ai_tool": [
+        [
+          {
+            "node": "Cobranza AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío notificación": {
+      "ai_tool": [
+        [
+          {
+            "node": "Cobranza AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "Cobranza AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "46cef691-f210-485d-a5ae-f821cff88003",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "58387f47d32778b57df701233e3ee96ce647bb82067ce8033d2dc5d2896f4d25"
+  },
+  "id": "TAOWLHEtUDdZvH61",
+  "tags": [
+    {
+      "createdAt": "2025-04-09T13:04:20.673Z",
+      "updatedAt": "2025-04-09T13:04:20.673Z",
+      "id": "yBcgRUru5f0wQfoE",
+      "name": "Summan"
+    }
+  ]
+}

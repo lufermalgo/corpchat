@@ -1,175 +1,231 @@
-# CorpChat MVP
+# CorpChat - Plataforma Conversacional Multi-Cliente
 
-**Plataforma Conversacional Corporativa** - Arquitectura Serverless con ADK + Open WebUI en GCP
+## 🎯 Descripción
 
-## 🎯 Objetivo
+CorpChat es una plataforma conversacional empresarial basada en Google's Agent Development Kit (ADK) e integrada con Open WebUI. Diseñada para ser **modular, escalable y replicable** para múltiples clientes.
 
-Chat corporativo con SSO Google (IAP), agentes Gemini vía ADK, adjuntos por chat con procesamiento completo de documentos, y mini-RAG con embeddings en Firestore. Todo con **costo base = 0** (pay-per-use estricto).
+## ✨ Características Principales
+
+- **🤖 Multi-Agent Architecture**: Basada en Google ADK con protocolo A2A
+- **🎨 UI Moderna**: Open WebUI con autenticación Google OIDC
+- **⚡ Multi-Model Support**: Gemini Fast, Thinking e Images
+- **🔧 Configuración Dinámica**: Sistema YAML para personalización
+- **🏢 Multi-Cliente**: Replicable para diferentes organizaciones
+- **🔄 A2A HTTP**: Comunicación robusta entre agentes
+- **🛡️ Fallback Robusto**: Vertex AI directo cuando ADK falla
 
 ## 🏗️ Arquitectura
 
-- **Frontend**: Open WebUI personalizado en Cloud Run + IAP (SSO Google Workspace)
-- **Gateway**: API OpenAI-compatible → Vertex AI Gemini con streaming
-- **Orquestación**: ADK con agente principal + especialistas (multi-agent)
-- **Procesamiento**: Pipeline completo de documentos (PDF, DOCX, XLSX, imágenes) con OCR, detección de tablas, chunking semántico y embeddings
-- **Tools**: Docs Tool, Sheets Tool (OpenAPI endpoints)
-- **Almacenamiento**: Firestore (metadata, chunks, vectores), GCS (artifacts, adjuntos)
-- **FinOps**: Budgets, guardrails, auto-apagado dev/stage, observabilidad de costos
-
-## 📦 Estructura del Proyecto
-
 ```
-CorpChat/
-├── docs/                    # Documentación técnica
-├── references/              # Repos de referencia (ADK, Open WebUI)
-├── infra/                   # Terraform e IaC
-├── services/                # Servicios deployables
-│   ├── ui/                  # Open WebUI personalizado
-│   ├── gateway/             # Gateway OpenAI → Gemini
-│   ├── agents/              # Workspace ADK (orchestrator + specialists)
-│   ├── ingestor/            # Pipeline procesamiento docs
-│   └── tools/               # Tool Servers
-└── tests/                   # Tests E2E y dataset canario
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Open WebUI    │───▶│  Nginx Gateway  │───▶│   Orchestrator  │───▶│ Agent-Generalist│
+│   (Puerto 3000) │    │  (Puerto 8080)  │    │   (Puerto 8000) │    │  (Puerto 8001)  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## 🚀 Setup Rápido
+## 🚀 Inicio Rápido
 
-### Prerrequisitos
-
-- Python 3.13
-- Docker
-- `gcloud` CLI configurado
-- Acceso al proyecto GCP `genai-385616`
-- Google Workspace para IAP
+### Prerequisitos
+- Docker Desktop 4.0+
+- Docker Compose 2.0+
+- Google Cloud Platform (GCP) con proyecto activo
+- Service Account con permisos de Vertex AI
+- Google OAuth 2.0 Client ID y Secret
 
 ### Instalación
 
-1. **Clonar el repositorio:**
-   ```bash
-   git clone https://github.com/lufermalgo/corpchat.git
-   cd corpchat
-   ```
+```bash
+# 1. Clonar repositorio
+git clone <repository-url>
+cd CorpChat
 
-2. **Clonar referencias (solo para consulta, no se commitean):**
-   ```bash
-   mkdir -p references
-   cd references
-   git clone https://github.com/google/adk-python.git adk-python-ref
-   git clone https://github.com/open-webui/open-webui.git open-webui-base
-   git clone https://github.com/open-webui/docs.git open-webui-docs
-   cd ..
-   ```
+# 2. Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus credenciales
 
-3. **Configurar GCP:**
-   ```bash
-   gcloud config set project genai-385616
-   gcloud config set run/region us-central1
-   ./infra/scripts/setup_gcp.sh
-   ```
+# 3. Ejecutar servicios
+docker-compose up --build -d
 
-4. **Crear entornos virtuales por servicio:**
-   ```bash
-   # Gateway
-   cd services/gateway
-   python3.13 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   deactivate
-   cd ../..
+# 4. Verificar servicios
+docker ps | grep chatcorp
+```
 
-   # Agents (ADK)
-   cd services/agents
-   python3.13 -m venv .venv
-   source .venv/bin/activate
-   pip install google-genai-adk==1.8.0
-   pip install -r requirements.txt
-   deactivate
-   cd ../..
+### Acceso
+- **UI**: http://localhost:3000
+- **API**: http://localhost:8080/v1
+- **Health Check**: http://localhost:8080/health
 
-   # Ingestor
-   cd services/ingestor
-   python3.13 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   deactivate
-   cd ../..
+## 🔧 Configuración
 
-   # Tools
-   cd services/tools
-   python3.13 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   deactivate
-   cd ../..
-   ```
+### Variables de Entorno Principales
+```bash
+PROJECT_PREFIX=chatcorp          # Identificador único del proyecto
+GCP_PROJECT_ID=genai-385616      # Proyecto GCP
+GOOGLE_CLIENT_ID=360...          # OAuth Client ID
+GOOGLE_CLIENT_SECRET=...         # OAuth Client Secret
+SECRET_KEY=...                   # Clave secreta para sesiones
+```
 
-5. **Configurar variables de entorno:**
-   ```bash
-   cp .env.template .env
-   # Editar .env con tus valores
-   ```
+### Configuración de Modelos
+Editar `services/backend/config/models.yaml`:
+```yaml
+models:
+  gemini-fast:
+    display_name: "Gemini-Super-Fast"
+    description: "Respuestas ultra rápidas y eficientes"
+    llm_model: "gemini-2.5-flash-lite"
+```
+
+## 📊 Modelos Disponibles
+
+| Modelo | Descripción | Uso Recomendado |
+|--------|-------------|-----------------|
+| `gemini-fast` | Respuestas rápidas | Consultas generales, respuestas cortas |
+| `gemini-thinking` | Razonamiento complejo | Análisis profundo, resolución de problemas |
+| `gemini-images` | Análisis visual | Descripción de imágenes, generación visual |
+
+## 🔄 Flujo de Comunicación
+
+### Flujo Principal (A2A HTTP)
+```
+Usuario → UI → Gateway → Orchestrator → Agent-Generalist → Vertex AI
+```
+
+### Flujo de Fallback
+```
+Usuario → UI → Gateway → Orchestrator → Vertex AI (Directo)
+```
+
+## 📁 Estructura del Proyecto
+
+```
+CorpChat/
+├── services/
+│   ├── ui/                    # Open WebUI
+│   ├── gateway/               # Nginx Gateway
+│   └── backend/
+│       ├── src/
+│       │   ├── orchestrator/  # Orchestrator ADK Agent
+│       │   ├── generalist/    # Generalist ADK Agent
+│       │   └── shared/        # Configuración compartida
+│       └── config/            # Configuración YAML
+├── docs/                      # Documentación
+├── credentials/               # Service Account JSON
+├── docker-compose.yml         # Orquestación de servicios
+└── .env                       # Variables de entorno
+```
+
+## 🏢 Replicación Multi-Cliente
+
+Para replicar la plataforma para un nuevo cliente:
+
+1. **Configurar variables de entorno** con `PROJECT_PREFIX` único
+2. **Personalizar configuración YAML** (modelos, prompts, agentes)
+3. **Configurar credenciales GCP** específicas del cliente
+4. **Desplegar con Docker Compose**
+
+Ver [Guía de Replicación](./docs/GUIA_REPLICACION.md) para detalles completos.
 
 ## 📚 Documentación
 
-- [Arquitectura](docs/architecture.md)
-- [Integración ADK](docs/adk-integration.md)
-- [Deployment](docs/deployment.md)
+- [Arquitectura Completa](./docs/ARQUITECTURA_BASE_COMPLETA.md)
+- [Guía de Replicación](./docs/GUIA_REPLICACION.md)
+- [Configuración Google OIDC](./docs/GOOGLE_OAUTH_SETUP.md)
+- [Reglas de Oro](./docs/GOLDEN_RULES_COMPLETE.md)
 
 ## 🧪 Testing
 
-### Tests unitarios
+### Pruebas de API
 ```bash
-cd services/ingestor
-source .venv/bin/activate
-pytest tests/
+# Probar modelo rápido
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "Hola"}], "model": "gemini-fast"}'
+
+# Verificar modelos disponibles
+curl http://localhost:8080/v1/models
 ```
 
-### Tests E2E
+### Pruebas de UI
+1. Abrir http://localhost:3000
+2. Autenticarse con Google
+3. Seleccionar modelo del dropdown
+4. Iniciar conversación
+
+## 🔍 Monitoreo
+
+### Logs
 ```bash
-cd tests/e2e
-source ../../services/gateway/.venv/bin/activate
-pytest test_full_flow.py
+# Logs de todos los servicios
+docker-compose logs -f
+
+# Logs específicos
+docker logs chatcorp-orchestrator --tail 50
+docker logs chatcorp-agent-generalist --tail 50
 ```
 
-## 🚀 Deployment
-
-Cada servicio tiene su propio `cloudbuild.yaml` para CI/CD:
-
+### Health Checks
 ```bash
-# Ejemplo: Deploy gateway
-gcloud builds submit services/gateway --config=services/gateway/cloudbuild.yaml
+# Verificar estado de servicios
+curl http://localhost:8080/health
+curl http://localhost:8000/health  # Orchestrator directo
+curl http://localhost:8001/health  # Agent-Generalist directo
 ```
 
-## 📊 FinOps y Observabilidad
+## 🚨 Troubleshooting
 
-- **Budgets**: Configurados con thresholds 50/80/100%
-- **Guardrails**: Auto-reducción de instancias y bloqueo de rutas costosas
-- **Dashboards**: Cloud Monitoring con métricas de costo por chat, tokens, latencia
-- **Auto-apagado**: Dev/stage apagan automáticamente noches y fines de semana
+### Problemas Comunes
 
-## 🔒 Seguridad
+**Error: "Cannot connect to host"**
+- Verificar que todos los servicios estén ejecutándose
+- Verificar configuración de red Docker
 
-- IAP/SSO para autenticación (Google Workspace)
-- Secret Manager para credenciales
-- IAM con least privilege
-- Signed URLs para GCS
-- No secrets en código
+**Error: "Google OIDC authentication failed"**
+- Verificar `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`
+- Verificar configuración en Google Cloud Console
+
+**Error: "Vertex AI permission denied"**
+- Verificar Service Account JSON
+- Verificar permisos en GCP
+
+Ver [Guía de Replicación](./docs/GUIA_REPLICACION.md#troubleshooting) para más detalles.
+
+## 🛣️ Roadmap
+
+### ✅ Completado (Fase 1)
+- Base funcional con 4 componentes
+- A2A HTTP implementado
+- Configuración dinámica YAML
+- Multi-model support
+- Replicabilidad multi-cliente
+
+### 🔄 Próximo (Fase 2)
+- Sistema de gestión de agentes especializados
+- Contenedores dedicados para agentes
+- Import/export de agentes
+- UI para gestión de agentes
+- A2A real con ADK completo
 
 ## 🤝 Contribución
 
-Ver [CONTRIBUTING.md](CONTRIBUTING.md) para guías de desarrollo.
+1. Fork el repositorio
+2. Crear branch para feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit cambios (`git commit -am 'Agregar nueva funcionalidad'`)
+4. Push al branch (`git push origin feature/nueva-funcionalidad`)
+5. Crear Pull Request
 
 ## 📄 Licencia
 
-[Definir licencia]
+Este proyecto está bajo la Licencia MIT. Ver [LICENSE](LICENSE) para detalles.
 
-## 🙋 Soporte
+## 📞 Soporte
 
-[Definir canal de soporte]
+- **Documentación**: [docs/](./docs/)
+- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
+- **Email**: support@corpchat.com
 
 ---
 
-**Proyecto**: CorpChat MVP  
-**Stack**: ADK (Google Genai) + Open WebUI + GCP (Cloud Run, Vertex AI, Firestore, GCS)  
-**Principio**: Costo base = 0 (100% serverless, pay-per-use)
-
+**Versión**: 1.0  
+**Última actualización**: 2025-10-23  
+**Estado**: Base funcional completada y validada

@@ -1,1 +1,0 @@
-Este es un documento de prueba para CorpChat. Contiene información importante sobre el procesamiento de documentos y la generación de embeddings. El sistema debe extraer este texto y crear chunks semánticos para almacenar en BigQuery Vector Store.
