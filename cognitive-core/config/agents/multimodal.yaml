@@ -1,0 +1,81 @@
+# Multimodal Integration Agent Configuration
+agent:
+  name: "MultimodalIntegrationAgent"
+  type: "LlmAgent"
+  model: "gemini-pro"
+  enabled: true
+  
+# Agent Skills
+skills:
+  - id: "reverse_planning"
+    name: "Reverse Planning"
+    description: "Planificación inversa desde demanda final hasta origen"
+    input_schema:
+      type: "object"
+      properties:
+        final_destination:
+          type: "string"
+          description: "Destino final de la carga"
+        delivery_date:
+          type: "string"
+          description: "Fecha de entrega requerida"
+        cargo_weight:
+          type: "number"
+          description: "Peso de la carga"
+    output_schema:
+      type: "object"
+      properties:
+        reverse_plan:
+          type: "array"
+          items:
+            type: "object"
+        critical_path:
+          type: "array"
+        bottlenecks:
+          type: "array"
+          
+  - id: "multimodal_optimization"
+    name: "Multimodal Optimization"
+    description: "Optimización de transporte multimodal"
+    input_schema:
+      type: "object"
+      properties:
+        terrestrial_plan:
+          type: "object"
+        maritime_plan:
+          type: "object"
+        constraints:
+          type: "object"
+    output_schema:
+      type: "object"
+      properties:
+        integrated_plan:
+          type: "object"
+        total_cost:
+          type: "number"
+        total_time:
+          type: "string"
+        efficiency_score:
+          type: "number"
+
+# Tools Configuration
+tools:
+  - name: "reverse_planning_tool"
+    type: "FunctionTool"
+    description: "Herramienta de planificación inversa"
+    
+  - name: "multimodal_optimizer_tool"
+    type: "FunctionTool"
+    description: "Optimizador multimodal"
+
+# Argos-specific multimodal configuration
+argos_specific:
+  integration_challenges:
+    - "Desconexión entre transporte terrestre y marítimo"
+    - "Decisiones manuales entre unidades"
+    - "Falta de optimización multimodal"
+  optimization_goals:
+    - "Minimizar costos totales"
+    - "Optimizar tiempos de entrega"
+    - "Maximizar utilización de capacidad"
+    - "Reducir tiempos de espera en puertos"

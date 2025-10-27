@@ -1,0 +1,88 @@
+# Terrestrial Logistics Agent Configuration
+agent:
+  name: "TerrestrialLogisticsAgent"
+  type: "LlmAgent"
+  model: "gemini-fast"
+  enabled: true
+  
+# Agent Skills
+skills:
+  - id: "plan_terrestrial_transport"
+    name: "Plan Terrestrial Transport"
+    description: "Planifica transporte terrestre desde plantas hasta puerto"
+    input_schema:
+      type: "object"
+      properties:
+        destination:
+          type: "string"
+          description: "Puerto de destino"
+        cargo_weight:
+          type: "number"
+          description: "Peso de la carga en toneladas"
+        cargo_type:
+          type: "string"
+          description: "Tipo de carga"
+    output_schema:
+      type: "object"
+      properties:
+        trucks_needed:
+          type: "integer"
+        route:
+          type: "string"
+        estimated_cost:
+          type: "number"
+        estimated_time:
+          type: "string"
+          
+  - id: "gps_fleet_optimization"
+    name: "GPS Fleet Optimization"
+    description: "Optimiza flota GPS disponible"
+    input_schema:
+      type: "object"
+      properties:
+        fleet_size:
+          type: "integer"
+        current_locations:
+          type: "array"
+          items:
+            type: "string"
+    output_schema:
+      type: "object"
+      properties:
+        optimized_assignment:
+          type: "array"
+        efficiency_score:
+          type: "number"
+
+# Tools Configuration
+tools:
+  - name: "gps_fleet_tool"
+    type: "FunctionTool"
+    description: "Acceso a flota GPS de Argos"
+    
+  - name: "route_optimizer_tool"
+    type: "FunctionTool"
+    description: "Optimización de rutas terrestres"
+    
+  - name: "geofence_tool"
+    type: "FunctionTool"
+    description: "Monitoreo de geocercas"
+
+# Argos-specific configuration
+argos_specific:
+  gps_coverage: "100%"
+  fleet_size: 150
+  plants:
+    - name: "Planta Bogotá"
+      location: "Bogotá, Colombia"
+      capacity: 5000
+    - name: "Planta Medellín"
+      location: "Medellín, Colombia"
+      capacity: 3000
+    - name: "Planta Cali"
+      location: "Cali, Colombia"
+      capacity: 4000
+  ports:
+    - name: "Puerto Cartagena"
+      location: "Cartagena, Colombia"
+      capacity: 10000

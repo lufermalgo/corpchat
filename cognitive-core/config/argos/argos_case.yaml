@@ -1,0 +1,92 @@
+# Argos Case Configuration
+case:
+  name: "Argos Multimodal Logistics"
+  description: "Caso de validación: Integración transporte terrestre-marítimo"
+  client: "Argos"
+  domain: "Logistics"
+  
+# Scenario Configuration
+scenario:
+  name: "8000 toneladas a Alabama"
+  description: "Envío de 8000 toneladas de cemento desde plantas colombianas hasta Alabama, USA"
+  
+  # Input parameters
+  cargo:
+    type: "cement"
+    weight: 8000  # toneladas
+    destination: "Alabama, USA"
+    delivery_date: "2024-12-15"
+    
+  # Expected flow
+  flow:
+    phase_1: "Plantas colombianas → Puerto Cartagena (terrestre)"
+    phase_2: "Puerto Cartagena → Mobile, Alabama (marítimo)"
+    phase_3: "Mobile, Alabama → Destino final (terrestre local)"
+    
+# Validation criteria
+validation:
+  success_criteria:
+    - "Plan terrestre detallado con rutas y camiones"
+    - "Plan marítimo con embarcación y tiempos"
+    - "Plan multimodal integrado"
+    - "Costos estimados para cada fase"
+    - "Tiempos estimados totales"
+    - "Identificación de cuellos de botella"
+    
+  expected_outputs:
+    terrestrial:
+      trucks_needed: "8-10 camiones"
+      route: "Plantas → Puerto Cartagena"
+      cost_range: "$8,000 - $12,000"
+      time_range: "2-3 días"
+      
+    maritime:
+      vessel: "MV Argos Carrier"
+      route: "Cartagena → Mobile, Alabama"
+      cost_range: "$35,000 - $40,000"
+      time_range: "8-10 días"
+      
+    multimodal:
+      total_cost: "$43,000 - $52,000"
+      total_time: "10-13 días"
+      efficiency_score: "> 85%"
+      
+# Test data
+test_data:
+  plants:
+    - name: "Planta Bogotá"
+      location: "Bogotá, Colombia"
+      capacity: 5000
+      available: 3000
+    - name: "Planta Medellín"
+      location: "Medellín, Colombia"
+      capacity: 3000
+      available: 2000
+    - name: "Planta Cali"
+      location: "Cali, Colombia"
+      capacity: 4000
+      available: 3000
+      
+  trucks:
+    total_fleet: 150
+    available: 120
+    capacity_per_truck: 1000  # toneladas
+    
+  vessels:
+    - name: "MV Argos Carrier"
+      capacity: 8000
+      route: "Cartagena - Mobile, Alabama"
+      next_departure: "2024-11-20"
+      cost_per_ton: 4.5
+      
+  ports:
+    cartagena:
+      name: "Puerto Cartagena"
+      country: "Colombia"
+      capacity: 15000
+      loading_time: "2 días"
+    mobile:
+      name: "Mobile, Alabama"
+      country: "USA"
+      capacity: 20000
+      unloading_time: "1 día"
