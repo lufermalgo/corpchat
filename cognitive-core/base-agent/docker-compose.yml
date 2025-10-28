@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  base-agent:
+    build: .
+    container_name: corpchat-base-agent
+    ports:
+      - "8080:8080"
+    environment:
+      - GOOGLE_CLOUD_PROJECT=genai-385616
+      - GOOGLE_CLOUD_REGION=us-central1
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account-local.json
+    volumes:
+      - /Users/lufermalgo/Proyectos/CorpChat/credentials:/app/credentials:ro
+    restart: unless-stopped
+    networks:
+      - corpchat-network
+
+networks:
+  corpchat-network:
+    external: true

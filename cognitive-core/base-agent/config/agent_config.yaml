@@ -1,0 +1,69 @@
+# Agent Configuration
+agent:
+  name: "enhanced_base_agent"
+  thinking_model: "gemini-2.5-pro"  # Modelo para respuestas con thinking profundo
+  fast_model: "gemini-2.5-flash"   # Modelo rápido para respuestas sin thinking
+  description: "An enhanced AI agent with advanced capabilities including tools, context awareness, and structured responses."
+  
+  # Thinking generation configuration (para respuestas con proceso de pensamiento)
+  thinking_generation:
+    temperature: 0.7
+    max_output_tokens: 2048
+    top_p: 0.9
+    top_k: 40
+    thinking_budget: 1024  # Enable thinking mode with budget
+  
+  # Fast generation configuration (para respuestas rápidas)
+  fast_generation:
+    temperature: 0.3
+    max_output_tokens: 512
+    top_p: 0.8
+    top_k: 20
+  
+  # Agent behavior
+  behavior:
+    include_contents: "default"
+    output_key: "agent_response"
+
+# System configuration
+system:
+  app_name: "cognitive_core"
+  user_id: "default_user"
+  project_id: "genai-385616"
+  location: "us-central1"
+
+# API configuration
+api:
+  host: "0.0.0.0"
+  port: 8080
+  title: "Enhanced Base Agent API"
+  description: "Advanced AI agent with ADK capabilities"
+  version: "2.0.0"
+
+# Tools configuration
+tools:
+  enabled:
+    - "time_tool"
+    - "math_tool"
+    - "info_tool"
+  
+  time_tool:
+    name: "get_current_time"
+    description: "Get the current date and time"
+    enabled: true
+  
+  math_tool:
+    name: "calculate_math"
+    description: "Safely evaluate mathematical expressions"
+    enabled: true
+    allowed_chars: "0123456789+-*/.() "
+  
+  info_tool:
+    name: "get_agent_info"
+    description: "Get information about the current agent"
+    enabled: true
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

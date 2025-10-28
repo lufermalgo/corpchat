@@ -1,0 +1,16 @@
+services:
+  agent-ui:
+    build: .
+    container_name: corpchat-agent-ui
+    ports:
+      - "7860:7860"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=7860
+    restart: unless-stopped
+    networks:
+      - corpchat-network
+
+networks:
+  corpchat-network:
+    external: true
